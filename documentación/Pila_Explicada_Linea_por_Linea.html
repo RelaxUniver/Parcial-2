@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Guía interactiva: Pila línea por línea</title>
+<style>
+:root {
+    --bg-color: #f8f9fa;
+    --code-bg: #282c34;
+    --code-text: #abb2bf;
+    --highlight-bg: #3e4451;
+    --node-bg: #e8f4f8;
+    --node-border: #2980b9;
+    --text-color: #2c3e50;
+    --pointer-color: #e74c3c;
+    --new-color: #d35400;
+    --arrow-color: #7f8c8d;
+    /* Zoom independiente: código y representación visual */
+    --code-zoom: 1;
+    --visual-zoom: 1;
+}
+* { box-sizing: border-box; }
+html, body { min-height: 100%; }
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: var(--bg-color);
+    margin: 0;
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 20px;
+    min-height: 100vh;
+    color: var(--text-color);
+}
+.panel {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.08);
+    padding: 20px;
+    height: calc(100vh - 40px);
+    min-height: 0;
+    overflow-y: auto;
+}
+
+/* ---------- Barra de herramientas (zoom + pantalla completa) ---------- */
+.tools { display: inline-flex; align-items: center; gap: 4px; flex-wrap: nowrap; }
+.tools .tool {
+    padding: 3px 9px;
+    font-size: .8rem;
+    line-height: 1.3;
+    border-radius: 5px;
+    border: 0;
+    cursor: pointer;
+    background: #3e4451;
+    color: #e6e9ee;
+    font-weight: bold;
+    min-width: 28px;
+}
+.tools .tool:hover:not(:disabled) { background: #566074; }
+.tools .tool:disabled { opacity: .4; cursor: not-allowed; background: #3e4451; }
+.tools .zoom-label { font-size: .72rem; min-width: 40px; text-align: center; font-weight: 700; color: inherit; }
+.tools .tool-title { font-size: .7rem; font-weight: 700; margin-right: 3px; color: inherit; opacity: .8; }
+.visual-tools .tool { background: #e5edf5; color: #2c3e50; }
+.visual-tools .tool:hover:not(:disabled) { background: #d2e0ee; }
+.visual-tools .tool:disabled { background: #e5edf5; }
+.visual-tools { color: #5d6d7e; }
+
+/* ---------- Panel de código ---------- */
+.code-panel {
+    width: 46%;
+    background: var(--code-bg);
+    color: var(--code-text);
+    font-family: Consolas, 'Courier New', monospace;
+    font-size: calc(13.5px * var(--code-zoom));
+    line-height: 1.5;
+    display: flex;
+    flex-direction: column;
+}
+.code-panel > * { flex-shrink: 0; }
+.code-header {
+    color: #61afef;
+    margin-bottom: 15px;
+    font-weight: bold;
+    font-size: 14px;
+    border-bottom: 1px solid #3e4451;
+    padding-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.code-header .code-title { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.code-body { margin: 0; }
+.line {
+    display: flex;
+    align-items: flex-start;
+    padding: 1px 6px 1px 0;
+    border-radius: 4px;
+    border-left: 3px solid transparent;
+    transition: background-color .2s;
+    cursor: pointer;
+}
+.line .ln {
+    flex: 0 0 2.4em;
+    text-align: right;
+    padding-right: .7em;
+    color: #636b78;
+    user-select: none;
+}
+.line .code { flex: 1; min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.line.active { background: var(--highlight-bg); border-left-color: #61afef; color: #fff; }
+.line.active .ln { color: #61afef; }
+.line:not(.active):hover { background: rgba(97,175,239,.10); }
+.keyword { color: #c678dd; }
+.type { color: #e5c07b; }
+.method { color: #61afef; }
+.string { color: #98c379; }
+
+/* ---------- Panel visual ---------- */
+.visual-panel { width: 50%; display: flex; flex-direction: column; align-items: stretch; }
+/* Evita que los bloques se compriman y se encimen los textos */
+.visual-panel > * { flex-shrink: 0; }
+.visual-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+}
+.visual-header { font-size: 1.2rem; font-weight: bold; color: #2c3e50; flex: 1 1 auto; }
+.visual-subtitle { margin: 0 0 12px; text-align: center; color: #718096; font-size: .78rem; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin: 0 0 12px; color: #617080; font-size: .78rem; }
+.legend-item { display: inline-flex; align-items: center; gap: 6px; }
+.legend-swatch { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
+.legend-top { background: #fff; border: 2px solid var(--pointer-color); }
+.legend-new { background: #fff; border: 2px dashed var(--new-color); }
+.legend-link { width: 2px; height: 15px; background: var(--arrow-color); display: inline-block; }
+
+/* Contenedor externo: se desplaza. Interno: recibe el zoom */
+.stack-container {
+    padding: 16px 15px;
+    background: #f1f2f6;
+    border-radius: 12px;
+    border: 2px dashed #bdc3c7;
+    min-height: 250px;
+    max-height: 420px;
+    width: 100%;
+    overflow: auto;
+}
+.stack-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    width: max-content;
+    min-width: 100%;
+    zoom: var(--visual-zoom);
+}
+.node-wrap { display: flex; flex-direction: column; align-items: center; position: relative; flex: 0 0 auto; }
+.tag-row { min-height: 24px; display: flex; justify-content: center; align-items: center; gap: 6px; }
+.chip {
+    font-size: .66rem;
+    font-weight: 800;
+    line-height: 1.3;
+    padding: 2px 7px;
+    border-radius: 10px;
+    border: 1.5px solid currentColor;
+    background: #fff;
+    white-space: nowrap;
+}
+.chip-top { color: var(--pointer-color); }
+.chip-new { color: var(--new-color); }
+.stack-node {
+    display: flex;
+    width: 210px;
+    min-height: 58px;
+    flex: 0 0 auto;
+    border: 3px solid var(--node-border);
+    background: var(--node-bg);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 8px rgba(0,0,0,.08);
+    transition: all .2s ease;
+}
+.stack-node.pending { border-color: var(--new-color); border-style: dashed; }
+.node-data {
+    flex: 1;
+    min-width: 0;
+    padding: 10px 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    overflow-wrap: anywhere;
+    font-weight: bold;
+    font-size: .86rem;
+    border-right: 2px solid var(--node-border);
+}
+.stack-node.pending .node-data { border-right-color: var(--new-color); }
+.node-next {
+    flex: 0 0 62px;
+    padding: 4px 2px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    background: #d1e8f0;
+    color: #52616b;
+    font-size: .62rem;
+    font-weight: 700;
+    line-height: 1.1;
+}
+.stack-node.pending .node-next { background: #fff0df; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: #333; }
+.null-label { font-size: .66rem; font-weight: 800; color: #6b7280; margin-top: 5px; margin-bottom: 4px; }
+.arrow-down { width: 2px; height: 20px; background: var(--arrow-color); position: relative; margin-bottom: 4px; }
+.arrow-down::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: -4px;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 6px solid var(--arrow-color);
+}
+.empty-msg { color: #95a5a6; text-align: center; padding: 50px 10px; font-weight: bold; line-height: 1.6; }
+.extras-row { display: flex; justify-content: center; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+.extra-card {
+    display: flex; align-items: center; gap: 8px;
+    border: 1.5px dashed var(--new-color); background: #fff8ed; color: #8a4b08;
+    border-radius: 8px; padding: 8px 11px; font-size: .78rem; font-weight: 700;
+}
+.extra-card.return-card { border-color: var(--pointer-color); background: #fff4f2; color: #a33a31; }
+.count-label { text-align: center; color: #718096; font-size: .76rem; font-weight: 700; margin-top: 10px; }
+
+.line-guide {
+    margin-top: 14px;
+    padding: 14px 16px;
+    border: 1px solid #d7e3ef;
+    border-left: 4px solid #3498db;
+    border-radius: 10px;
+    background: #f4f8fc;
+    box-shadow: 0 2px 8px rgba(44,62,80,.05);
+}
+.guide-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.guide-kicker { color: #3498db; font-size: .68rem; font-weight: 800; letter-spacing: .09em; }
+.guide-title { margin: 3px 0 0; color: #2c3e50; font-size: 1.02rem; }
+.guide-counter { flex: 0 0 auto; color: #5d6d7e; background: #e5edf5; border-radius: 20px; padding: 5px 9px; font-size: .72rem; font-weight: 700; }
+.guide-code { display: block; margin-top: 10px; padding: 8px 10px; border-radius: 6px; background: #282c34; color: #98c379; font: .82rem/1.45 Consolas,'Courier New',monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+.guide-text { margin: 10px 0 0; color: #405366; font-size: .9rem; line-height: 1.5; }
+.guide-hint { margin-top: 9px; color: #6c7a89; font-size: .76rem; }
+.status-message { margin-top: 12px; font-weight: bold; color: #e67e22; min-height: 40px; text-align: center; line-height: 1.4; }
+.controls { margin-top: 10px; display: flex; flex-direction: column; gap: 10px; width: 100%; align-items: center; }
+.control-row { display: flex; gap: 10px; align-items: flex-end; justify-content: center; width: 100%; flex-wrap: wrap; }
+.field { display: flex; flex-direction: column; gap: 3px; font-size: .75rem; color: #7f8c8d; font-weight: 600; }
+select, input { padding: 9px; border: 1px solid #ccc; border-radius: 6px; font-size: .95rem; max-width: 100%; }
+input { width: 165px; }
+select { min-width: 245px; }
+.controls button { padding: 9px 14px; border: 0; border-radius: 6px; font-size: .9rem; font-weight: bold; cursor: pointer; transition: background .2s, transform .1s; }
+.controls button:active { transform: scale(.98); }
+.btn-action { background: #3498db; color: #fff; }
+.btn-action:hover { background: #2980b9; }
+.btn-next { background: #2ecc71; color: #fff; }
+.btn-next:hover { background: #27ae60; }
+.btn-all { background: #8e44ad; color: #fff; }
+.btn-all:hover { background: #732d91; }
+.btn-reset { background: #95a5a6; color: #fff; }
+.btn-reset:hover { background: #7f8c8d; }
+.btn-clear { background: #e67e22; color: #fff; }
+.btn-clear:hover { background: #d35400; }
+.controls button:disabled { background: #bdc3c7; cursor: not-allowed; }
+select:disabled, input:disabled { background: #f0f0f0; cursor: not-allowed; }
+.console-box { margin-top: 15px; background: var(--code-bg); border-radius: 9px; overflow: hidden; }
+.console-head { display: flex; justify-content: space-between; align-items: center; padding: 6px 12px; background: #21252b; color: #61afef; font: bold .8rem Consolas,'Courier New',monospace; }
+.console-head button { padding: 2px 10px; font-size: .72rem; background: #3e4451; color: #abb2bf; border: 0; border-radius: 5px; cursor: pointer; }
+.console-out { margin: 0; padding: 9px 12px; min-height: 42px; max-height: 75px; overflow-y: auto; color: #98c379; font: .78rem/1.4 Consolas,'Courier New',monospace; white-space: pre-wrap; }
+
+/* ---------- Pantalla completa ---------- */
+body.is-fullscreen { padding: 10px; background: var(--bg-color); overflow: auto; }
+body.is-fullscreen .panel { height: calc(100vh - 20px); }
+
+@media (max-width: 1000px) {
+    body { flex-direction: column; align-items: stretch; }
+    .panel { width: 100% !important; height: auto; }
+    .code-panel { min-height: 330px; }
+    select { min-width: 0; width: 100%; }
+    body.is-fullscreen .panel { height: auto; }
+}
+@media (max-width: 520px) {
+    body { padding: 10px; gap: 12px; }
+    .panel { padding: 14px; }
+    .line-guide { padding: 12px; }
+    .guide-head { flex-direction: column; }
+    .guide-counter { align-self: flex-start; }
+    .stack-container { padding: 10px 6px; }
+    .stack-node { width: min(210px, 80vw); }
+    .control-row { gap: 8px; }
+    .controls button { padding: 8px 10px; font-size: .82rem; }
+}
+</style>
+</head>
+<body>
+    <div class="panel code-panel">
+        <div class="code-header">
+            <div class="code-title">
+                <span>PilaHistorial.java</span>
+                <span id="method-title" style="font-size:.9em;color:#e5c07b;"></span>
+            </div>
+            <div class="tools" role="group" aria-label="Tamaño del código">
+                <span class="tool-title">Código</span>
+                <button type="button" class="tool" id="code-minus" onclick="changeZoom('code', -1)" title="Reducir código" aria-label="Reducir tamaño del código">−</button>
+                <span class="zoom-label" id="code-zoom-label">100%</span>
+                <button type="button" class="tool" id="code-plus" onclick="changeZoom('code', 1)" title="Aumentar código" aria-label="Aumentar tamaño del código">+</button>
+            </div>
+        </div>
+        <div class="code-body" id="code-display"></div>
+    </div>
+
+    <div class="panel visual-panel">
+        <div class="visual-top">
+            <div class="visual-header">Estado actual de la Pila</div>
+            <div class="tools visual-tools" role="group" aria-label="Tamaño de la representación">
+                <span class="tool-title">Visual</span>
+                <button type="button" class="tool" id="visual-minus" onclick="changeZoom('visual', -1)" title="Reducir representación" aria-label="Reducir tamaño de la representación">−</button>
+                <span class="zoom-label" id="visual-zoom-label">100%</span>
+                <button type="button" class="tool" id="visual-plus" onclick="changeZoom('visual', 1)" title="Aumentar representación" aria-label="Aumentar tamaño de la representación">+</button>
+                <button type="button" class="tool" id="btn-fullscreen" onclick="toggleFullscreen()" title="Pantalla completa" aria-label="Pantalla completa">⛶</button>
+            </div>
+        </div>
+        <p class="visual-subtitle">Cada bloque representa un NodoHistorial: dato + siguiente.</p>
+        <div class="legend">
+            <span class="legend-item"><i class="legend-swatch legend-top"></i>cima</span>
+            <span class="legend-item"><i class="legend-swatch legend-new"></i>nuevoNodo</span>
+            <span class="legend-item"><i class="legend-link"></i>enlace siguiente</span>
+        </div>
+        <div class="stack-container">
+            <div class="stack-inner" id="visual-stack"></div>
+        </div>
+
+        <section class="line-guide" aria-live="polite">
+            <div class="guide-head">
+                <div>
+                    <div class="guide-kicker">EXPLICACIÓN DE LA LÍNEA</div>
+                    <h3 class="guide-title" id="guide-title">Propósito del método</h3>
+                </div>
+                <span class="guide-counter" id="guide-counter">Vista general</span>
+            </div>
+            <code class="guide-code" id="guide-code" hidden></code>
+            <p class="guide-text" id="guide-text">Selecciona push() o pop() y haz clic sobre una línea para conocer qué hace. También puedes iniciar la simulación y avanzar paso a paso.</p>
+            <div class="guide-hint">Solo se muestran las operaciones que modifican la estructura: push() y pop().</div>
+        </section>
+
+        <div class="status-message" id="status-msg">La pila conserva sus elementos entre operaciones. El último registro agregado será el primero en salir.</div>
+        <div class="controls">
+            <div class="control-row">
+                <select id="method-select" onchange="changeMethod()" aria-label="Operación de la pila">
+                    <option value="push">push(RegistroHistorial registro)</option>
+                    <option value="pop">pop()</option>
+                </select>
+            </div>
+            <div class="control-row" id="inputs-container"></div>
+            <div class="control-row">
+                <button class="btn-action" id="btn-start" type="button" onclick="startSim()">Iniciar simulación</button>
+                <button class="btn-next" id="btn-next" type="button" onclick="nextStep()" disabled>Siguiente paso</button>
+                <button class="btn-all" id="btn-all" type="button" onclick="runAll()" disabled>Ejecutar todo</button>
+            </div>
+            <div class="control-row">
+                <button class="btn-reset" type="button" onclick="resetLab()">Reiniciar ejemplo</button>
+                <button class="btn-clear" type="button" onclick="emptyStack()">Vaciar pila</button>
+            </div>
+        </div>
+
+        <div class="console-box">
+            <div class="console-head">
+                <span>Consola</span>
+                <button type="button" onclick="clearConsole()">Limpiar</button>
+            </div>
+            <pre class="console-out" id="console-out">Pila de ejemplo cargada.</pre>
+        </div>
+    </div>
+
+<script>
+// Fragmentos exactos de los dos métodos que modifican PilaHistorial.java.
+const METHODS = {
+    push: {
+        title: 'push()',
+        code: [
+            'public void push(RegistroHistorial registro) {',
+            '    if (registro == null) {',
+            '        throw new DatoInvalidoException(',
+            '            "El registro de historial no puede ser nulo."',
+            '        );',
+            '    }',
+            '    NodoHistorial nuevoNodo = new NodoHistorial(registro);',
+            '    nuevoNodo.setSiguiente(cima);',
+            '    cima = nuevoNodo;',
+            '    total++;',
+            '}'
+        ],
+        summary: 'Inserta un registro en la cima de la pila. Primero valida el parámetro, crea un NodoHistorial, conecta su campo siguiente con la cima anterior, mueve cima al nodo nuevo e incrementa total.',
+        lines: [
+            'Declara el método público push. Recibe un objeto RegistroHistorial que será almacenado en un nuevo nodo. Al ser una pila, este elemento se incorpora por la cima.',
+            'Comprueba que el registro recibido no sea null. La estructura no debe guardar un nodo sin un registro válido.',
+            'Si el registro es null, comienza a lanzar DatoInvalidoException. La excepción detiene la operación y no se modifica la pila.',
+            'Es el mensaje que explica el motivo del error: no se puede insertar un registro nulo.',
+            'Cierra la llamada al constructor de la excepción.',
+            'Cierra el bloque de validación. Si registro no era null, la ejecución continúa con la creación del nodo.',
+            'Crea un NodoHistorial nuevo que guarda el objeto registro. En el constructor de NodoHistorial, su enlace siguiente se inicializa en null.',
+            'Establece que el siguiente del nodo nuevo sea la cima que existía antes. Así, el nodo nuevo queda conectado delante de la cadena actual. Si la pila estaba vacía, cima era null.',
+            'Actualiza cima para que apunte al nodo recién creado. Este pasa a ser el primer nodo de la cadena y, por tanto, el tope de la pila.',
+            'Incrementa el contador porque ahora hay un nodo más almacenado.',
+            'Cierra el método push(). La inserción queda completada.'
+        ]
+    },
+    pop: {
+        title: 'pop()',
+        code: [
+            'public RegistroHistorial pop() {',
+            '    if (estaVacia()) {',
+            '        throw new EstructuraVaciaException(',
+            '            "La pila de historial está vacía. No hay cambios para deshacer."',
+            '        );',
+            '    }',
+            '    RegistroHistorial registro = cima.getDato();',
+            '    cima = cima.getSiguiente();',
+            '    total--;',
+            '    return registro;',
+            '}'
+        ],
+        summary: 'Extrae el registro que está en la cima. Comprueba que la pila no esté vacía, conserva el dato del nodo superior, mueve cima al siguiente nodo, decrementa total y devuelve el registro extraído.',
+        lines: [
+            'Declara pop() como un método que devuelve un RegistroHistorial. La operación siempre extrae el elemento que está en cima, porque la pila sigue el principio LIFO: el último en entrar es el primero en salir.',
+            'Comprueba si la pila está vacía. estaVacia() evalúa si cima == null; aquí se utiliza únicamente para proteger el acceso al nodo superior.',
+            'Si no existe un nodo en cima, lanza EstructuraVaciaException. No es posible extraer un elemento de una pila vacía.',
+            'Es el mensaje que describe la causa de la excepción.',
+            'Cierra la llamada al constructor de la excepción.',
+            'Cierra el bloque de validación. Cuando la pila contiene al menos un nodo, la ejecución continúa con la extracción.',
+            'Obtiene el objeto RegistroHistorial almacenado en el nodo señalado por cima y lo guarda en registro. Se conserva antes de mover cima para poder devolverlo después.',
+            'Mueve cima al nodo siguiente del que estaba arriba. Con ese cambio, el segundo nodo pasa a ser la nueva cima y el nodo anterior queda fuera de la cadena de la pila.',
+            'Decrementa total porque se acaba de retirar un nodo.',
+            'Devuelve el registro que se guardó antes de modificar cima. El dato extraído no se pierde: se entrega como resultado del método.',
+            'Cierra el método pop(). La extracción queda completada.'
+        ]
+    }
+};
+
+let nextId = 1;
+let cima = null;
+let total = 0;
+let nuevoNodoPendiente = null;
+let nodoExtraido = null;
+let ultimoRetorno = '';
+let simulating = false;
+let steps = [];
+let stepIndex = -1;
+let consoleText = 'Pila de ejemplo cargada.';
+
+const codeDisplay = document.getElementById('code-display');
+const methodSelect = document.getElementById('method-select');
+const methodTitle = document.getElementById('method-title');
+const inputsContainer = document.getElementById('inputs-container');
+const visualStack = document.getElementById('visual-stack');
+const statusMsg = document.getElementById('status-msg');
+const btnStart = document.getElementById('btn-start');
+const btnNext = document.getElementById('btn-next');
+const btnAll = document.getElementById('btn-all');
+const guideTitle = document.getElementById('guide-title');
+const guideCounter = document.getElementById('guide-counter');
+const guideCode = document.getElementById('guide-code');
+const guideText = document.getElementById('guide-text');
+const consoleEl = document.getElementById('console-out');
+
+/* ================== Zoom independiente y pantalla completa ================== */
+const ZOOM_MIN = 0.6, ZOOM_MAX = 2.0, ZOOM_STEP = 0.1;
+const zoomState = { code: 1, visual: 1 };
+
+function changeZoom(target, direction) {
+    const next = Math.round((zoomState[target] + direction * ZOOM_STEP) * 100) / 100;
+    zoomState[target] = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, next));
+    applyZoom();
+}
+
+function applyZoom() {
+    const root = document.documentElement.style;
+    root.setProperty('--code-zoom', zoomState.code);
+    root.setProperty('--visual-zoom', zoomState.visual);
+    ['code', 'visual'].forEach(target => {
+        document.getElementById(target + '-zoom-label').textContent = Math.round(zoomState[target] * 100) + '%';
+        document.getElementById(target + '-minus').disabled = zoomState[target] <= ZOOM_MIN + 0.001;
+        document.getElementById(target + '-plus').disabled = zoomState[target] >= ZOOM_MAX - 0.001;
+    });
+}
+
+function toggleFullscreen() {
+    const doc = document;
+    const el = doc.documentElement;
+    const active = doc.fullscreenElement || doc.webkitFullscreenElement;
+    try {
+        if (!active) {
+            const req = el.requestFullscreen || el.webkitRequestFullscreen;
+            if (req) req.call(el);
+        } else {
+            const exit = doc.exitFullscreen || doc.webkitExitFullscreen;
+            if (exit) exit.call(doc);
+        }
+    } catch (err) { /* el navegador puede bloquear la pantalla completa */ }
+}
+
+function syncFullscreenState() {
+    const active = !!(document.fullscreenElement || document.webkitFullscreenElement);
+    document.body.classList.toggle('is-fullscreen', active);
+    const btn = document.getElementById('btn-fullscreen');
+    btn.textContent = active ? '🗗' : '⛶';
+    btn.title = active ? 'Salir de pantalla completa' : 'Pantalla completa';
+}
+document.addEventListener('fullscreenchange', syncFullscreenState);
+document.addEventListener('webkitfullscreenchange', syncFullscreenState);
+
+/* ================== Lógica de la pila ================== */
+function createNode(value) {
+    return { id: nextId++, value: value, next: null };
+}
+
+function loadExample() {
+    const a = createNode('101');
+    const b = createNode('102');
+    const c = createNode('103');
+    b.next = a;
+    c.next = b;
+    cima = c;
+    total = 3;
+    nuevoNodoPendiente = null;
+    nodoExtraido = null;
+    ultimoRetorno = '';
+}
+
+function escapeHtml(text) {
+    return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function highlightJava(text) {
+    const escaped = escapeHtml(text);
+    return escaped.replace(
+        /("[^"]*")|\b(public|void|if|throw|return|new|null)\b|\b(RegistroHistorial|NodoHistorial|DatoInvalidoException|EstructuraVaciaException)\b|\b([A-Za-z_]\w*)(?=\()/g,
+        (match, string, keyword, type, method) => {
+            if (string) return `<span class="string">${string}</span>`;
+            if (keyword) return `<span class="keyword">${keyword}</span>`;
+            if (type) return `<span class="type">${type}</span>`;
+            if (method) return `<span class="method">${method}</span>`;
+            return match;
+        }
+    );
+}
+
+function renderCode(name) {
+    codeDisplay.innerHTML = '';
+    METHODS[name].code.forEach((raw, index) => {
+        const indent = raw.match(/^ */)[0].length;
+        const row = document.createElement('div');
+        row.className = 'line';
+        row.id = 'line-' + (index + 1);
+        row.tabIndex = 0;
+        row.setAttribute('role', 'button');
+        row.setAttribute('aria-label', 'Explicar línea ' + (index + 1));
+        const selectLine = () => {
+            if (simulating) return;
+            showLineGuide(name, index + 1);
+            highlightLine(index + 1);
+        };
+        row.addEventListener('click', selectLine);
+        row.addEventListener('keydown', event => {
+            if ((event.key === 'Enter' || event.key === ' ') && !simulating) {
+                event.preventDefault();
+                selectLine();
+            }
+        });
+        const number = document.createElement('span');
+        number.className = 'ln';
+        number.textContent = index + 1;
+        const code = document.createElement('span');
+        code.className = 'code';
+        code.style.paddingLeft = (indent * .75) + 'ch';
+        code.innerHTML = highlightJava(raw.slice(indent));
+        row.append(number, code);
+        codeDisplay.appendChild(row);
+    });
+}
+
+function clearHighlights() {
+    document.querySelectorAll('.line').forEach(line => line.classList.remove('active'));
+}
+
+function highlightLine(number) {
+    clearHighlights();
+    const line = document.getElementById('line-' + number);
+    if (line) {
+        line.classList.add('active');
+        line.scrollIntoView({ block: 'nearest' });
+    }
+}
+
+function showLineGuide(name, lineNumber = 0) {
+    const method = METHODS[name];
+    if (!lineNumber) {
+        guideTitle.textContent = 'Propósito de ' + method.title;
+        guideCounter.textContent = method.code.length + ' líneas';
+        guideCode.hidden = true;
+        guideCode.textContent = '';
+        guideText.textContent = method.summary;
+        return;
+    }
+    guideTitle.textContent = 'Línea ' + lineNumber + ' · ' + method.title;
+    guideCounter.textContent = 'Línea ' + lineNumber + ' de ' + method.code.length;
+    guideCode.hidden = false;
+    guideCode.textContent = method.code[lineNumber - 1].trim();
+    guideText.textContent = method.lines[lineNumber - 1];
+}
+
+function changeMethod() {
+    if (simulating) return;
+    const name = methodSelect.value;
+    methodTitle.textContent = METHODS[name].title;
+    renderCode(name);
+    showLineGuide(name, 0);
+    clearHighlights();
+    inputsContainer.innerHTML = '';
+    if (name === 'push') {
+        const label = document.createElement('label');
+        label.className = 'field';
+        label.textContent = 'Identificador del registro';
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.id = 'record-id';
+        input.maxLength = 16;
+        input.value = '104';
+        input.placeholder = 'Ej. 104';
+        input.addEventListener('keydown', event => { if (event.key === 'Enter') startSim(); });
+        label.appendChild(input);
+        inputsContainer.appendChild(label);
+        const note = document.createElement('span');
+        note.style.cssText = 'color:#7f8c8d;font-size:.76rem;';
+        note.textContent = 'Déjalo vacío para observar la validación de null.';
+        inputsContainer.appendChild(note);
+    } else {
+        const note = document.createElement('span');
+        note.style.cssText = 'color:#7f8c8d;font-size:.82rem;';
+        note.textContent = 'No necesita parámetros.';
+        inputsContainer.appendChild(note);
+    }
+    statusMsg.textContent = name === 'push'
+        ? 'push() agrega un RegistroHistorial en la cima de la pila.'
+        : 'pop() extrae y devuelve el RegistroHistorial que está en cima.';
+}
+
+function setBusy(busy) {
+    methodSelect.disabled = busy;
+    inputsContainer.querySelectorAll('input').forEach(input => input.disabled = busy);
+    btnStart.disabled = busy;
+    btnNext.disabled = !busy;
+    btnAll.disabled = !busy;
+    if (!busy) btnNext.textContent = 'Siguiente paso';
+}
+
+function addStep(line, message, apply = null) {
+    steps.push({ line, message, apply });
+}
+
+function makePushSteps(value) {
+    steps = [];
+    const isNull = !value;
+    let newNode = null;
+    addStep(1, 'Entramos en push(registro). Se va a insertar un objeto RegistroHistorial en la cima.');
+    addStep(2, isNull
+        ? 'registro == null devuelve true. El parámetro está vacío y la validación impedirá insertar el nodo.'
+        : 'registro == null devuelve false. El parámetro contiene un registro válido y se puede continuar.');
+    if (isNull) {
+        addStep(3, 'Se lanza DatoInvalidoException. La ejecución se detiene antes de crear o enlazar cualquier nodo.');
+        addStep(4, 'Este es el mensaje que explica por qué el registro no es válido.');
+        addStep(5, 'Se cierra la llamada que construye la excepción. La pila permanece sin cambios.');
+        return;
+    }
+    addStep(6, 'Se cierra el bloque de validación. Como el registro es válido, el flujo continúa después del if.');
+    newNode = createNode(value);
+    addStep(7, `Se crea nuevoNodo con el RegistroHistorial #${value}. Todavía no está enlazado a la cadena de la pila.`, () => {
+        nuevoNodoPendiente = newNode;
+        renderStack();
+    });
+    addStep(8, cima === null
+        ? 'nuevoNodo.setSiguiente(cima) establece siguiente = null, porque la pila estaba vacía.'
+        : 'nuevoNodo.setSiguiente(cima) conecta el nodo nuevo con la cima anterior. El nodo nuevo queda delante de la cadena existente.', () => {
+        newNode.next = cima;
+        renderStack();
+    });
+    addStep(9, 'cima = nuevoNodo mueve el puntero cima al nodo recién creado. Ahora ese registro está en el tope de la pila.', () => {
+        cima = newNode;
+        nuevoNodoPendiente = null;
+        renderStack();
+    });
+    addStep(10, 'total aumenta en uno porque se insertó un nodo.', () => {
+        total++;
+        renderStack();
+    });
+    addStep(11, 'Finaliza push(). El nuevo registro queda almacenado en la cima.');
+}
+
+function makePopSteps() {
+    steps = [];
+    addStep(1, 'Entramos en pop(). Se intentará extraer el registro que está en cima.');
+    if (cima === null) {
+        addStep(2, 'estaVacia() devuelve true porque cima == null. No existe un nodo que pueda extraerse.');
+        addStep(3, 'Se lanza EstructuraVaciaException. El método termina sin modificar la pila.');
+        addStep(4, 'Este es el mensaje que informa que no hay cambios para deshacer.');
+        addStep(5, 'Se cierra la llamada que construye la excepción. La pila continúa vacía.');
+        return;
+    }
+    const removed = cima;
+    addStep(2, 'estaVacia() devuelve false porque cima apunta a un nodo. La extracción puede continuar.');
+    addStep(7, `cima.getDato() obtiene el RegistroHistorial #${removed.value} y lo conserva en la variable registro.`, () => {
+        ultimoRetorno = removed.value;
+        renderStack();
+    });
+    addStep(8, 'cima avanza al siguiente nodo del que estaba arriba. El antiguo nodo superior queda fuera de la cadena de la pila.', () => {
+        cima = removed.next;
+        nodoExtraido = removed;
+        renderStack();
+    });
+    addStep(9, 'total disminuye en uno porque se retiró un nodo.', () => {
+        total--;
+        renderStack();
+    });
+    addStep(10, `return registro devuelve el objeto RegistroHistorial #${removed.value} que se guardó antes de mover cima.`);
+    addStep(11, 'Finaliza pop(). El nodo superior fue extraído y la nueva cima es el siguiente nodo, o null si la pila quedó vacía.');
+}
+
+function makeChip(text, className) {
+    const chip = document.createElement('span');
+    chip.className = 'chip ' + className;
+    chip.textContent = text;
+    return chip;
+}
+
+function buildNode(node, state = '') {
+    const wrap = document.createElement('div');
+    wrap.className = 'node-wrap';
+    const tags = document.createElement('div');
+    tags.className = 'tag-row';
+    if (node === cima) tags.appendChild(makeChip('cima', 'chip-top'));
+    if (state === 'pending') tags.appendChild(makeChip('nuevoNodo', 'chip-new'));
+    wrap.appendChild(tags);
+
+    const box = document.createElement('div');
+    box.className = 'stack-node' + (state ? ' ' + state : '');
+    const data = document.createElement('div');
+    data.className = 'node-data';
+    data.textContent = 'RegistroHistorial #' + node.value;
+    const next = document.createElement('div');
+    next.className = 'node-next';
+    const caption = document.createElement('span');
+    caption.textContent = 'siguiente';
+    const point = document.createElement('span');
+    point.className = 'dot';
+    next.append(caption, point);
+    box.append(data, next);
+    wrap.appendChild(box);
+
+    if (node.next !== null) {
+        const arrow = document.createElement('div');
+        arrow.className = 'arrow-down';
+        wrap.appendChild(arrow);
+    } else {
+        const nullLabel = document.createElement('div');
+        nullLabel.className = 'null-label';
+        nullLabel.textContent = 'siguiente = null';
+        wrap.appendChild(nullLabel);
+    }
+    return wrap;
+}
+
+function renderStack() {
+    visualStack.innerHTML = '';
+    const visited = new Set();
+    if (nuevoNodoPendiente) {
+        visualStack.appendChild(buildNode(nuevoNodoPendiente, 'pending'));
+    }
+    let current = cima;
+    let count = 0;
+    while (current && !visited.has(current)) {
+        visited.add(current);
+        visualStack.appendChild(buildNode(current));
+        current = current.next;
+        count++;
+        if (count > 100) break;
+    }
+    if (!cima && !nuevoNodoPendiente) {
+        const empty = document.createElement('div');
+        empty.className = 'empty-msg';
+        empty.innerHTML = '<strong>Pila vacía</strong><br>cima = null';
+        visualStack.appendChild(empty);
+    }
+
+    if (nodoExtraido || ultimoRetorno) {
+        const extras = document.createElement('div');
+        extras.className = 'extras-row';
+        const card = document.createElement('div');
+        card.className = 'extra-card return-card';
+        const value = nodoExtraido ? nodoExtraido.value : ultimoRetorno;
+        card.innerHTML = '<span>Registro devuelto:</span><strong>#' + escapeHtml(value) + '</strong>';
+        extras.appendChild(card);
+        visualStack.appendChild(extras);
+    }
+    const countLabel = document.createElement('div');
+    countLabel.className = 'count-label';
+    countLabel.textContent = 'total = ' + total;
+    visualStack.appendChild(countLabel);
+}
+
+function startSim() {
+    if (simulating) return;
+    const name = methodSelect.value;
+    // El valor devuelto anterior no debe confundirse con la operación nueva.
+    ultimoRetorno = '';
+    nodoExtraido = null;
+    if (name === 'push') {
+        const input = document.getElementById('record-id');
+        const value = input ? input.value.trim() : '';
+        makePushSteps(value);
+    } else {
+        makePopSteps();
+    }
+    stepIndex = -1;
+    simulating = true;
+    setBusy(true);
+    nextStep();
+}
+
+function nextStep() {
+    if (!simulating) return;
+    stepIndex++;
+    if (stepIndex >= steps.length) {
+        finishSim();
+        return;
+    }
+    const step = steps[stepIndex];
+    if (step.apply) step.apply();
+    highlightLine(step.line);
+    showLineGuide(methodSelect.value, step.line);
+    statusMsg.textContent = step.message;
+    btnNext.textContent = stepIndex === steps.length - 1 ? 'Finalizar' : 'Siguiente paso';
+}
+
+function runAll() {
+    while (simulating) nextStep();
+}
+
+function appendConsole(message) {
+    consoleText += (consoleText ? '\n' : '') + message;
+    refreshConsole();
+}
+function refreshConsole() {
+    consoleEl.textContent = consoleText;
+    consoleEl.scrollTop = consoleEl.scrollHeight;
+}
+function clearConsole() {
+    consoleText = '';
+    refreshConsole();
+}
+
+function finishSim() {
+    const name = methodSelect.value;
+    simulating = false;
+    steps = [];
+    stepIndex = -1;
+    setBusy(false);
+    clearHighlights();
+    if (name === 'push') {
+        const input = document.getElementById('record-id');
+        const value = input ? input.value.trim() : '';
+        if (!value) {
+            appendConsole('push(): DatoInvalidoException. No se insertó ningún nodo.');
+            statusMsg.textContent = 'El registro era null. Se lanzó DatoInvalidoException y la pila no cambió.';
+        } else {
+            appendConsole('push(): se agregó RegistroHistorial #' + value + '. total = ' + total + '.');
+            statusMsg.textContent = 'push() finalizó. Registro #' + value + ' quedó en la cima.';
+        }
+    } else if (ultimoRetorno) {
+        appendConsole('pop(): se devolvió RegistroHistorial #' + ultimoRetorno + '. total = ' + total + '.');
+        nodoExtraido = null;
+        renderStack();
+        statusMsg.textContent = 'pop() finalizó. Se extrajo RegistroHistorial #' + ultimoRetorno + '.';
+    } else {
+        appendConsole('pop(): EstructuraVaciaException. La pila no cambió.');
+        statusMsg.textContent = 'La pila está vacía. Se produjo EstructuraVaciaException y no se modificó la estructura.';
+    }
+}
+
+function abortSim() {
+    simulating = false;
+    steps = [];
+    stepIndex = -1;
+    setBusy(false);
+    clearHighlights();
+}
+
+function resetLab() {
+    abortSim();
+    loadExample();
+    statusMsg.textContent = 'Pila reiniciada con tres registros de ejemplo: 103, 102 y 101 (de cima hacia abajo).';
+    renderStack();
+}
+
+function emptyStack() {
+    abortSim();
+    cima = null;
+    total = 0;
+    nuevoNodoPendiente = null;
+    nodoExtraido = null;
+    ultimoRetorno = '';
+    statusMsg.textContent = 'La pila quedó vacía: cima = null y total = 0.';
+    renderStack();
+}
+
+applyZoom();
+loadExample();
+changeMethod();
+renderStack();
+</script>
+</body>
+</html>

@@ -1,0 +1,1122 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guía interactiva: Cola línea por línea</title>
+    <style>
+        :root {
+            --bg-color: #f8f9fa;
+            --code-bg: #282c34;
+            --code-text: #abb2bf;
+            --highlight-bg: #3e4451;
+            --node-bg: #e8f4f8;
+            --node-border: #2980b9;
+            --text-color: #2c3e50;
+            --pointer-color: #e74c3c;
+            --rear-color: #8e44ad;
+            --new-color: #d35400;
+            --arrow-color: #7f8c8d;
+            /* Zoom independiente: código y representación visual */
+            --code-zoom: 1;
+            --visual-zoom: 1;
+        }
+        * { box-sizing: border-box; }
+        html, body { min-height: 100%; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            gap: 20px;
+            min-height: 100vh;
+            color: var(--text-color);
+        }
+        .panel {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+            padding: 20px;
+            height: calc(100vh - 40px);
+            min-height: 0;
+            overflow-y: auto;
+        }
+
+        /* ---------- Barra de herramientas (zoom + pantalla completa) ---------- */
+        .tools { display: inline-flex; align-items: center; gap: 4px; flex-wrap: nowrap; }
+        .tools .tool {
+            padding: 3px 9px;
+            font-size: .8rem;
+            line-height: 1.3;
+            border-radius: 5px;
+            border: 0;
+            cursor: pointer;
+            background: #3e4451;
+            color: #e6e9ee;
+            font-weight: bold;
+            min-width: 28px;
+        }
+        .tools .tool:hover:not(:disabled) { background: #566074; }
+        .tools .tool:disabled { opacity: .4; cursor: not-allowed; background: #3e4451; }
+        .tools .zoom-label { font-size: .72rem; min-width: 40px; text-align: center; font-weight: 700; color: inherit; }
+        .tools .tool-title { font-size: .7rem; font-weight: 700; margin-right: 3px; color: inherit; opacity: .8; }
+        .visual-tools { color: #5d6d7e; }
+        .visual-tools .tool { background: #e5edf5; color: #2c3e50; }
+        .visual-tools .tool:hover:not(:disabled) { background: #d2e0ee; }
+        .visual-tools .tool:disabled { background: #e5edf5; }
+
+        /* ---------- Panel de código ---------- */
+        .code-panel {
+            width: 46%;
+            background-color: var(--code-bg);
+            color: var(--code-text);
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: calc(13.5px * var(--code-zoom));
+            line-height: 1.5;
+            display: flex;
+            flex-direction: column;
+        }
+        .code-panel > * { flex-shrink: 0; }
+        .code-header {
+            color: #61afef;
+            margin-bottom: 15px;
+            font-weight: bold;
+            font-size: 14px;
+            border-bottom: 1px solid #3e4451;
+            padding-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .code-header .code-title { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+        .code-body { margin: 0; }
+        .line {
+            display: flex;
+            align-items: flex-start;
+            padding: 1px 6px 1px 0;
+            border-radius: 4px;
+            border-left: 3px solid transparent;
+            transition: background-color 0.2s;
+            cursor: pointer;
+        }
+        .line .ln {
+            flex: 0 0 2.4em;
+            text-align: right;
+            padding-right: .7em;
+            color: #636b78;
+            user-select: none;
+        }
+        .line .code {
+            flex: 1;
+            min-width: 0;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+        }
+        .line.active {
+            background-color: var(--highlight-bg);
+            border-left-color: #61afef;
+            color: #fff;
+        }
+        .line.active .ln { color: #61afef; }
+        .line:not(.active):hover { background: rgba(97, 175, 239, .10); }
+        .keyword { color: #c678dd; }
+        .type { color: #e5c07b; }
+        .method { color: #61afef; }
+        .string { color: #98c379; }
+
+        /* ---------- Panel visual ---------- */
+        .visual-panel {
+            width: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+        }
+        /* Evita que los bloques se compriman y se encimen los textos */
+        .visual-panel > * { flex-shrink: 0; }
+        .visual-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 8px;
+        }
+        .visual-header {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #2c3e50;
+            flex: 1 1 auto;
+        }
+        .visual-subtitle {
+            margin: 0 0 12px;
+            text-align: center;
+            color: #718096;
+            font-size: .78rem;
+        }
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px 14px;
+            align-items: center;
+            margin: 0 0 12px;
+            color: #617080;
+            font-size: 0.78rem;
+        }
+        .legend-item { display: inline-flex; align-items: center; gap: 6px; }
+        .legend-swatch { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
+        .legend-front { background: #fff; border: 2px solid var(--pointer-color); }
+        .legend-rear { background: #fff; border: 2px solid var(--rear-color); }
+        .legend-arrow { width: 19px; height: 2px; background: var(--arrow-color); display: inline-block; position: relative; }
+        .legend-arrow::after {
+            content: ''; position: absolute; right: -1px; top: -3px;
+            border-top: 4px solid transparent; border-bottom: 4px solid transparent;
+            border-left: 5px solid var(--arrow-color);
+        }
+
+        /* Contenedor externo: se desplaza. Interno: recibe el zoom */
+        .queue-container {
+            padding: 20px;
+            background: #f1f2f6;
+            border-radius: 12px;
+            border: 2px dashed #bdc3c7;
+            min-height: 225px;
+            max-height: 440px;
+            width: 100%;
+            overflow: auto;
+        }
+        .queue-inner {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            width: max-content;
+            min-width: 100%;
+            min-height: 185px;
+            zoom: var(--visual-zoom);
+        }
+        .queue-inner > * { flex-shrink: 0; }
+        .queue-row {
+            display: flex;
+            align-items: flex-start;
+            width: max-content;
+        }
+        .node-wrap {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 0 0 142px;
+            width: 142px;
+        }
+        /* Etiquetas en su propia fila reservada (ya no flotan encima de los vecinos) */
+        .tag-row {
+            width: 100%;
+            height: 26px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 4px;
+            flex-wrap: nowrap;
+        }
+        .chip {
+            font-size: .64rem;
+            font-weight: 800;
+            line-height: 1.3;
+            padding: 2px 6px;
+            border-radius: 10px;
+            border: 1.5px solid currentColor;
+            background: #fff;
+            white-space: nowrap;
+        }
+        .chip-front { color: var(--pointer-color); }
+        .chip-rear { color: var(--rear-color); }
+        .chip-new { color: var(--new-color); }
+        .queue-node {
+            display: flex;
+            width: 124px;
+            height: 58px;
+            flex: 0 0 auto;
+            border: 3px solid var(--node-border);
+            background: var(--node-bg);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+            transition: all .2s ease;
+        }
+        .queue-node.pending { border-color: var(--new-color); border-style: dashed; }
+        .queue-node.removed { border-color: var(--pointer-color); border-style: dashed; opacity: .75; }
+        .node-data {
+            flex: 1;
+            min-width: 0;
+            padding: 6px 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            overflow-wrap: anywhere;
+            font-weight: bold;
+            font-size: .8rem;
+            line-height: 1.2;
+            border-right: 2px solid var(--node-border);
+        }
+        .node-next {
+            flex: 0 0 27px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #d1e8f0;
+        }
+        .dot { width: 8px; height: 8px; border-radius: 50%; background: #333; }
+        /* La flecha se alinea con el centro del nodo: etiqueta (26px) + mitad del nodo (29px) */
+        .link-arrow {
+            flex: 0 0 28px;
+            width: 28px;
+            height: 2px;
+            background: var(--arrow-color);
+            position: relative;
+            margin-top: 54px;
+        }
+        .link-arrow::after {
+            content: ''; position: absolute; right: -1px; top: -4px;
+            border-top: 5px solid transparent; border-bottom: 5px solid transparent;
+            border-left: 6px solid var(--arrow-color);
+        }
+        .empty-msg {
+            color: #95a5a6;
+            text-align: center;
+            padding: 35px 10px;
+            font-weight: bold;
+            line-height: 1.6;
+        }
+        .extras-row {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .extra-card {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            border: 1.5px dashed var(--new-color);
+            background: #fff8ed;
+            color: #8a4b08;
+            border-radius: 8px;
+            padding: 8px 11px;
+            font-size: .78rem;
+            font-weight: 700;
+        }
+        .extra-card.removed-card {
+            border-color: var(--pointer-color);
+            background: #fff4f2;
+            color: #a33a31;
+        }
+        .extra-note { font-size: .72rem; font-weight: 600; color: #6c7a89; }
+
+        /* ---------- Explicación de línea ---------- */
+        .line-guide {
+            margin-top: 14px;
+            padding: 14px 16px;
+            border: 1px solid #d7e3ef;
+            border-left: 4px solid #3498db;
+            border-radius: 10px;
+            background: #f4f8fc;
+            box-shadow: 0 2px 8px rgba(44, 62, 80, 0.05);
+        }
+        .guide-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+        .guide-kicker { color: #3498db; font-size: .68rem; font-weight: 800; letter-spacing: .09em; }
+        .guide-title { margin: 3px 0 0; color: #2c3e50; font-size: 1.02rem; }
+        .guide-counter { flex: 0 0 auto; color: #5d6d7e; background: #e5edf5; border-radius: 20px; padding: 5px 9px; font-size: .72rem; font-weight: 700; }
+        .guide-code {
+            display: block; margin-top: 10px; padding: 8px 10px; border-radius: 6px;
+            background: #282c34; color: #98c379;
+            font: .82rem/1.45 Consolas, 'Courier New', monospace;
+            white-space: pre-wrap; overflow-wrap: anywhere;
+        }
+        .guide-text { margin: 10px 0 0; color: #405366; font-size: .9rem; line-height: 1.5; }
+        .guide-hint { margin-top: 9px; color: #6c7a89; font-size: .76rem; }
+        .status-message {
+            margin-top: 12px;
+            font-weight: bold;
+            color: #e67e22;
+            min-height: 40px;
+            text-align: center;
+            line-height: 1.4;
+        }
+
+        /* ---------- Controles ---------- */
+        .controls {
+            margin-top: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: 100%;
+            align-items: center;
+        }
+        .control-row {
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+            justify-content: center;
+            width: 100%;
+            flex-wrap: wrap;
+        }
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            font-size: .75rem;
+            color: #7f8c8d;
+            font-weight: 600;
+        }
+        select, input {
+            padding: 9px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: .95rem;
+            max-width: 100%;
+        }
+        input { width: 150px; }
+        select { min-width: 270px; }
+        .controls button {
+            padding: 9px 14px;
+            border: none;
+            border-radius: 6px;
+            font-size: .9rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background .2s, transform .1s;
+        }
+        .controls button:active { transform: scale(.98); }
+        .btn-action { background: #3498db; color: white; }
+        .btn-action:hover { background: #2980b9; }
+        .btn-next { background: #2ecc71; color: white; }
+        .btn-next:hover { background: #27ae60; }
+        .btn-all { background: #8e44ad; color: white; }
+        .btn-all:hover { background: #732d91; }
+        .btn-reset { background: #95a5a6; color: white; }
+        .btn-reset:hover { background: #7f8c8d; }
+        .btn-clear { background: #e67e22; color: white; }
+        .btn-clear:hover { background: #d35400; }
+        .controls button:disabled { background: #bdc3c7; cursor: not-allowed; }
+        select:disabled, input:disabled { background: #f0f0f0; cursor: not-allowed; }
+
+        /* ---------- Consola ---------- */
+        .console-box { margin-top: 15px; background: var(--code-bg); border-radius: 9px; overflow: hidden; }
+        .console-head {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 6px 12px; background: #21252b; color: #61afef;
+            font: bold .8rem 'Consolas', 'Courier New', monospace;
+        }
+        .console-head button { padding: 2px 10px; font-size: .72rem; background: #3e4451; color: #abb2bf; border: 0; border-radius: 5px; cursor: pointer; }
+        .console-out {
+            margin: 0; padding: 9px 12px; min-height: 42px; max-height: 75px; overflow-y: auto;
+            color: #98c379; font: .78rem/1.4 'Consolas', 'Courier New', monospace; white-space: pre-wrap;
+        }
+
+        /* ---------- Pantalla completa ---------- */
+        body.is-fullscreen { padding: 10px; overflow: auto; }
+        body.is-fullscreen .panel { height: calc(100vh - 20px); }
+
+        @media (max-width: 1000px) {
+            body { flex-direction: column; align-items: stretch; }
+            .panel { width: 100% !important; height: auto; }
+            .code-panel { min-height: 360px; }
+            select { min-width: 0; width: 100%; }
+            body.is-fullscreen .panel { height: auto; }
+        }
+        @media (max-width: 520px) {
+            body { padding: 10px; gap: 12px; }
+            .panel { padding: 14px; }
+            .line-guide { padding: 12px; }
+            .guide-head { flex-direction: column; }
+            .guide-counter { align-self: flex-start; }
+            .queue-container { padding: 12px 8px; }
+            .control-row { gap: 8px; }
+            .controls button { padding: 8px 10px; font-size: .82rem; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Panel de código -->
+    <div class="panel code-panel">
+        <div class="code-header">
+            <div class="code-title">
+                <span>ColaSolicitudes.java</span>
+                <span id="method-title" style="font-size:.9em;color:#e5c07b;"></span>
+            </div>
+            <div class="tools" role="group" aria-label="Tamaño del código">
+                <span class="tool-title">Código</span>
+                <button type="button" class="tool" id="code-minus" onclick="changeZoom('code', -1)" title="Reducir código" aria-label="Reducir tamaño del código">−</button>
+                <span class="zoom-label" id="code-zoom-label">100%</span>
+                <button type="button" class="tool" id="code-plus" onclick="changeZoom('code', 1)" title="Aumentar código" aria-label="Aumentar tamaño del código">+</button>
+            </div>
+        </div>
+        <div class="code-body" id="code-display"></div>
+    </div>
+
+    <!-- Panel visual -->
+    <div class="panel visual-panel">
+        <div class="visual-top">
+            <div class="visual-header">Estado actual de la Cola</div>
+            <div class="tools visual-tools" role="group" aria-label="Tamaño de la representación">
+                <span class="tool-title">Visual</span>
+                <button type="button" class="tool" id="visual-minus" onclick="changeZoom('visual', -1)" title="Reducir representación" aria-label="Reducir tamaño de la representación">−</button>
+                <span class="zoom-label" id="visual-zoom-label">100%</span>
+                <button type="button" class="tool" id="visual-plus" onclick="changeZoom('visual', 1)" title="Aumentar representación" aria-label="Aumentar tamaño de la representación">+</button>
+                <button type="button" class="tool" id="btn-fullscreen" onclick="toggleFullscreen()" title="Pantalla completa" aria-label="Pantalla completa">⛶</button>
+            </div>
+        </div>
+        <p class="visual-subtitle">Cada bloque representa un NodoSolicitud: dato + siguiente.</p>
+        <div class="legend" aria-label="Leyenda">
+            <span class="legend-item"><i class="legend-swatch legend-front"></i>frente</span>
+            <span class="legend-item"><i class="legend-swatch legend-rear"></i>fondo</span>
+            <span class="legend-item"><i class="legend-arrow"></i>enlace siguiente</span>
+        </div>
+        <div class="queue-container">
+            <div class="queue-inner" id="visual-queue"></div>
+        </div>
+
+        <section class="line-guide" aria-live="polite">
+            <div class="guide-head">
+                <div>
+                    <div class="guide-kicker">EXPLICACIÓN DETALLADA</div>
+                    <h3 class="guide-title" id="guide-title">Propósito del método</h3>
+                </div>
+                <span class="guide-counter" id="guide-counter">Vista general</span>
+            </div>
+            <code class="guide-code" id="guide-code" hidden></code>
+            <p class="guide-text" id="guide-text">Selecciona una operación y haz clic sobre cualquiera de sus líneas para conocer qué hace. También puedes iniciar la simulación y avanzar paso a paso.</p>
+            <div class="guide-hint">Las líneas de validación y cierre también se pueden seleccionar para explicar su función.</div>
+        </section>
+
+        <div class="status-message" id="status-msg">Elige enqueue() o dequeue(). La cola conserva sus elementos entre operaciones.</div>
+
+        <div class="controls">
+            <div class="control-row">
+                <select id="method-select" onchange="changeMethod()" aria-label="Operación de la cola">
+                    <option value="enqueue">enqueue(SolicitudActualizacion solicitud)</option>
+                    <option value="dequeue">dequeue()</option>
+                </select>
+            </div>
+            <div class="control-row" id="inputs-container"></div>
+            <div class="control-row">
+                <button class="btn-action" id="btn-start" type="button" onclick="startSim()">Iniciar simulación</button>
+                <button class="btn-next" id="btn-next" type="button" onclick="nextStep()" disabled>Siguiente paso</button>
+                <button class="btn-all" id="btn-all" type="button" onclick="runAll()" disabled>Ejecutar todo</button>
+            </div>
+            <div class="control-row">
+                <button class="btn-reset" type="button" onclick="resetLab()">Reiniciar ejemplo</button>
+                <button class="btn-clear" type="button" onclick="emptyQueue()">Vaciar cola</button>
+            </div>
+        </div>
+
+        <div class="console-box">
+            <div class="console-head">
+                <span>Consola</span>
+                <button type="button" onclick="clearConsole()">Limpiar</button>
+            </div>
+            <pre class="console-out" id="console-out">Cola de ejemplo cargada.</pre>
+        </div>
+    </div>
+
+<script>
+    // Código real de las dos operaciones que modifican la cola.
+    const METHODS = {
+        enqueue: {
+            title: 'enqueue()',
+            inputs: ['idSolicitud'],
+            code: [
+                'public void enqueue(SolicitudActualizacion solicitud) {',
+                '    if (solicitud == null) {',
+                '        throw new DatoInvalidoException(',
+                '            "La solicitud de actualización no puede ser nula."',
+                '        );',
+                '    }',
+                '    NodoSolicitud nuevoNodo = new NodoSolicitud(solicitud);',
+                '    if (estaVacia()) {',
+                '        frente = nuevoNodo;',
+                '        fondo = nuevoNodo;',
+                '    } else {',
+                '        fondo.setSiguiente(nuevoNodo);',
+                '        fondo = nuevoNodo;',
+                '    }',
+                '    total++;',
+                '}'
+            ],
+            summary: 'Agrega una solicitud al final de la cola. Crea un NodoSolicitud y actualiza los enlaces y el puntero fondo. Si la cola estaba vacía, frente y fondo apuntan al nuevo nodo.',
+            lines: [
+                'Declara la operación pública que recibe una solicitud. Esa solicitud será el dato almacenado dentro del nuevo NodoSolicitud.',
+                'Comprueba que el parámetro no sea null. Es una validación para impedir que se inserte una solicitud inexistente.',
+                'Si la solicitud es null, comienza a lanzar la excepción DatoInvalidoException. La ejecución no continúa con la inserción.',
+                'Es el mensaje que acompañará a la excepción. Explica por qué el dato no es válido.',
+                'Cierra la llamada al constructor de la excepción.',
+                'Cierra el bloque de validación. Cuando la solicitud sí es válida, la ejecución continúa en la creación del nodo.',
+                'Crea un nuevo NodoSolicitud y guarda la solicitud dentro de su atributo dato. El enlace siguiente del nodo comienza en null.',
+                'Pregunta si la cola está vacía. En esta clase, estaVacia() comprueba si frente es null.',
+                'Caso de cola vacía: frente comienza a apuntar al nodo nuevo. Así queda establecido el primer elemento.',
+                'También fondo apunta al mismo nodo, porque al existir un solo elemento ese nodo es tanto el primero como el último.',
+                'Si la cola no está vacía, se ejecuta esta alternativa. El nodo nuevo debe agregarse después del último.',
+                'Modifica el enlace siguiente del nodo que actualmente es el último para que apunte al nuevo nodo.',
+                'Mueve fondo al nodo nuevo. Desde este momento, fondo identifica al último elemento de la cola.',
+                'Cierra la estructura condicional: ya se atendió el caso vacío o el caso no vacío.',
+                'Incrementa el contador porque se agregó un elemento a la cola.',
+                'Cierra el método enqueue().'
+            ]
+        },
+        dequeue: {
+            title: 'dequeue()',
+            inputs: [],
+            code: [
+                'public SolicitudActualizacion dequeue() {',
+                '    if (estaVacia()) {',
+                '        throw new EstructuraVaciaException(',
+                '            "La cola de solicitudes está vacía. No hay solicitudes para atender."',
+                '        );',
+                '    }',
+                '    SolicitudActualizacion solicitud = frente.getDato();',
+                '    frente = frente.getSiguiente();',
+                '    if (frente == null) {',
+                '        fondo = null;',
+                '    }',
+                '    total--;',
+                '    return solicitud;',
+                '}'
+            ],
+            summary: 'Extrae el primer elemento de la cola. Guarda su dato, mueve frente al siguiente nodo y, si ya no quedan nodos, también establece fondo en null. Finalmente decrementa total y devuelve la solicitud extraída.',
+            lines: [
+                'Declara la operación que extrae y devuelve una SolicitudActualizacion. Como es una cola FIFO, siempre se atiende el elemento señalado por frente.',
+                'Comprueba si la cola está vacía antes de intentar acceder al primer nodo.',
+                'Si está vacía, lanza EstructuraVaciaException. No se puede extraer un elemento que no existe.',
+                'Mensaje que describe el motivo de la excepción.',
+                'Cierra la llamada al constructor de la excepción.',
+                'Cierra la validación. Si la cola no estaba vacía, se continúa con la extracción.',
+                'Obtiene el dato almacenado en el nodo que señala frente y lo guarda en la variable solicitud. Se conserva porque el nodo dejará de ser el primero.',
+                'Avanza frente al nodo siguiente. El segundo nodo pasa a ser el primero de la cola.',
+                'Comprueba si frente quedó en null. Esto sucede cuando se acaba de extraer el único elemento que quedaba.',
+                'Si ya no hay primer nodo, la cola está completamente vacía; por eso también se pone fondo en null.',
+                'Cierra la condición que trata el caso en que se extrajo el último elemento.',
+                'Decrementa el contador porque se eliminó un nodo de la cola.',
+                'Devuelve la solicitud que se guardó antes de mover frente.',
+                'Cierra el método dequeue().'
+            ]
+        }
+    };
+
+    // Modelo de nodos enlazados: cada nodo contiene dato y siguiente.
+    let nextId = 1;
+    let frente = null;
+    let fondo = null;
+    let total = 0;
+    let nuevoNodoPendiente = null;
+    let nodoExtraido = null;
+    let ultimaExtraccion = '';
+
+    const codeDisplay = document.getElementById('code-display');
+    const methodSelect = document.getElementById('method-select');
+    const methodTitle = document.getElementById('method-title');
+    const inputsContainer = document.getElementById('inputs-container');
+    const visualQueue = document.getElementById('visual-queue');
+    const statusMsg = document.getElementById('status-msg');
+    const btnStart = document.getElementById('btn-start');
+    const btnNext = document.getElementById('btn-next');
+    const btnAll = document.getElementById('btn-all');
+    const guideTitle = document.getElementById('guide-title');
+    const guideCounter = document.getElementById('guide-counter');
+    const guideCode = document.getElementById('guide-code');
+    const guideText = document.getElementById('guide-text');
+    const consoleEl = document.getElementById('console-out');
+
+    let simulating = false;
+    let steps = [];
+    let stepIndex = -1;
+    let consoleText = 'Cola de ejemplo cargada.';
+
+    /* ================== Zoom independiente y pantalla completa ================== */
+    const ZOOM_MIN = 0.6, ZOOM_MAX = 2.0, ZOOM_STEP = 0.1;
+    const zoomState = { code: 1, visual: 1 };
+
+    function changeZoom(target, direction) {
+        const next = Math.round((zoomState[target] + direction * ZOOM_STEP) * 100) / 100;
+        zoomState[target] = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, next));
+        applyZoom();
+    }
+
+    function applyZoom() {
+        const root = document.documentElement.style;
+        root.setProperty('--code-zoom', zoomState.code);
+        root.setProperty('--visual-zoom', zoomState.visual);
+        ['code', 'visual'].forEach(target => {
+            document.getElementById(target + '-zoom-label').textContent = Math.round(zoomState[target] * 100) + '%';
+            document.getElementById(target + '-minus').disabled = zoomState[target] <= ZOOM_MIN + 0.001;
+            document.getElementById(target + '-plus').disabled = zoomState[target] >= ZOOM_MAX - 0.001;
+        });
+    }
+
+    function toggleFullscreen() {
+        const doc = document;
+        const el = doc.documentElement;
+        const active = doc.fullscreenElement || doc.webkitFullscreenElement;
+        try {
+            if (!active) {
+                const req = el.requestFullscreen || el.webkitRequestFullscreen;
+                if (req) req.call(el);
+            } else {
+                const exit = doc.exitFullscreen || doc.webkitExitFullscreen;
+                if (exit) exit.call(doc);
+            }
+        } catch (err) { /* el navegador puede bloquear la pantalla completa */ }
+    }
+
+    function syncFullscreenState() {
+        const active = !!(document.fullscreenElement || document.webkitFullscreenElement);
+        document.body.classList.toggle('is-fullscreen', active);
+        const btn = document.getElementById('btn-fullscreen');
+        btn.textContent = active ? '🗗' : '⛶';
+        btn.title = active ? 'Salir de pantalla completa' : 'Pantalla completa';
+    }
+    document.addEventListener('fullscreenchange', syncFullscreenState);
+    document.addEventListener('webkitfullscreenchange', syncFullscreenState);
+
+    /* ================== Lógica de la cola ================== */
+    function createNode(value) {
+        return { id: nextId++, value, next: null };
+    }
+
+    function loadExample() {
+        const a = createNode('104');
+        const b = createNode('105');
+        const c = createNode('106');
+        a.next = b;
+        b.next = c;
+        frente = a;
+        fondo = c;
+        total = 3;
+        nuevoNodoPendiente = null;
+        nodoExtraido = null;
+        ultimaExtraccion = '';
+    }
+
+    function appendConsole(message) {
+        consoleText += (consoleText ? '\n' : '') + message;
+        refreshConsole();
+    }
+
+    function refreshConsole() {
+        consoleEl.textContent = consoleText;
+        consoleEl.scrollTop = consoleEl.scrollHeight;
+    }
+
+    function clearConsole() {
+        consoleText = '';
+        refreshConsole();
+    }
+
+    function escapeHtml(text) {
+        return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function highlightJava(text) {
+        const escaped = escapeHtml(text);
+        return escaped.replace(
+            /(\"[^\"]*\")|\b(public|void|if|else|throw|return|new|null)\b|\b(SolicitudActualizacion|NodoSolicitud|DatoInvalidoException|EstructuraVaciaException)\b|\b([A-Za-z_]\w*)(?=\()/g,
+            (match, string, keyword, type, method) => {
+                if (string) return `<span class="string">${string}</span>`;
+                if (keyword) return `<span class="keyword">${keyword}</span>`;
+                if (type) return `<span class="type">${type}</span>`;
+                if (method) return `<span class="method">${method}</span>`;
+                return match;
+            }
+        );
+    }
+
+    function renderCode(name) {
+        codeDisplay.innerHTML = '';
+        METHODS[name].code.forEach((raw, index) => {
+            const leadingSpaces = raw.match(/^ */)[0].length;
+            const row = document.createElement('div');
+            row.className = 'line';
+            row.id = 'line-' + (index + 1);
+            row.setAttribute('role', 'button');
+            row.setAttribute('tabindex', '0');
+            row.setAttribute('aria-label', 'Explicar línea ' + (index + 1));
+            row.addEventListener('click', () => {
+                if (simulating) return;
+                showLineGuide(name, index + 1);
+                highlightLine(index + 1);
+            });
+            row.addEventListener('keydown', event => {
+                if ((event.key === 'Enter' || event.key === ' ') && !simulating) {
+                    event.preventDefault();
+                    showLineGuide(name, index + 1);
+                    highlightLine(index + 1);
+                }
+            });
+            const number = document.createElement('span');
+            number.className = 'ln';
+            number.textContent = index + 1;
+            const code = document.createElement('span');
+            code.className = 'code';
+            code.style.paddingLeft = (leadingSpaces * .75) + 'ch';
+            code.innerHTML = highlightJava(raw.slice(leadingSpaces));
+            row.append(number, code);
+            codeDisplay.appendChild(row);
+        });
+    }
+
+    function clearHighlights() {
+        document.querySelectorAll('.line').forEach(line => line.classList.remove('active'));
+    }
+
+    function highlightLine(number) {
+        clearHighlights();
+        const line = document.getElementById('line-' + number);
+        if (line) {
+            line.classList.add('active');
+            line.scrollIntoView({ block: 'nearest' });
+        }
+    }
+
+    function showLineGuide(name, lineNumber = 0) {
+        const method = METHODS[name];
+        if (lineNumber === 0) {
+            guideTitle.textContent = 'Propósito de ' + method.title;
+            guideCounter.textContent = method.code.length + ' líneas';
+            guideCode.hidden = true;
+            guideCode.textContent = '';
+            guideText.textContent = method.summary;
+            return;
+        }
+        guideTitle.textContent = 'Línea ' + lineNumber + ' · ' + method.title;
+        guideCounter.textContent = 'Línea ' + lineNumber + ' de ' + method.code.length;
+        guideCode.hidden = false;
+        guideCode.textContent = method.code[lineNumber - 1].trim();
+        guideText.textContent = method.lines[lineNumber - 1];
+    }
+
+    function changeMethod() {
+        if (simulating) return;
+        const name = methodSelect.value;
+        methodTitle.textContent = METHODS[name].title;
+        renderCode(name);
+        showLineGuide(name, 0);
+        clearHighlights();
+        inputsContainer.innerHTML = '';
+        if (name === 'enqueue') {
+            const label = document.createElement('label');
+            label.className = 'field';
+            label.textContent = 'ID de la solicitud';
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.id = 'request-id';
+            input.maxLength = 12;
+            input.value = '107';
+            input.placeholder = 'ID';
+            input.addEventListener('keydown', event => { if (event.key === 'Enter') startSim(); });
+            label.appendChild(input);
+            inputsContainer.appendChild(label);
+        } else {
+            const note = document.createElement('span');
+            note.style.cssText = 'color:#7f8c8d;font-size:.82rem;';
+            note.textContent = 'No necesita parámetros.';
+            inputsContainer.appendChild(note);
+        }
+        statusMsg.textContent = name === 'enqueue'
+            ? 'enqueue() agrega una solicitud al final de la cola.'
+            : 'dequeue() extrae la solicitud que está al frente de la cola.';
+    }
+
+    function setBusy(busy) {
+        methodSelect.disabled = busy;
+        inputsContainer.querySelectorAll('input').forEach(input => input.disabled = busy);
+        btnStart.disabled = busy;
+        btnNext.disabled = !busy;
+        btnAll.disabled = !busy;
+        if (!busy) btnNext.textContent = 'Siguiente paso';
+    }
+
+    function addStep(line, message, apply = null) {
+        steps.push({ line, message, apply });
+    }
+
+    function makeEnqueueSteps(value) {
+        steps = [];
+        const newNode = createNode(value);
+        addStep(1, 'Entramos en enqueue(solicitud). La operación va a incorporar una solicitud al final.');
+        addStep(2, 'Se valida solicitud != null. En esta simulación el dato es válido, así que no se lanza la excepción.');
+        addStep(7, 'Se crea nuevoNodo con la solicitud recibida. Todavía no forma parte de la cadena enlazada.', () => {
+            nuevoNodoPendiente = newNode;
+            renderQueue();
+        });
+        const wasEmpty = frente === null;
+        addStep(8, wasEmpty
+            ? 'estaVacia() devuelve true porque frente == null. Se ejecutará la rama del primer elemento.'
+            : 'estaVacia() devuelve false. La cola ya tiene nodos, por lo que se agregará detrás de fondo.');
+        if (wasEmpty) {
+            addStep(9, 'frente empieza a apuntar a nuevoNodo. La cola ya tiene un primer elemento.', () => {
+                frente = newNode;
+                nuevoNodoPendiente = null;
+                renderQueue();
+            });
+            addStep(10, 'fondo también apunta a nuevoNodo. Como solo existe un nodo, es a la vez el primero y el último.', () => {
+                fondo = newNode;
+                renderQueue();
+            });
+        } else {
+            addStep(11, 'La condición fue falsa; entramos en el bloque else para enlazar el nuevo nodo al final.');
+            addStep(12, 'El antiguo último nodo enlaza su campo siguiente con nuevoNodo. La cadena ahora incluye el nodo nuevo.', () => {
+                fondo.next = newNode;
+                nuevoNodoPendiente = null;
+                renderQueue();
+            });
+            addStep(13, 'fondo se actualiza para señalar al nodo recién agregado, que ahora es el último.', () => {
+                fondo = newNode;
+                renderQueue();
+            });
+        }
+        addStep(14, 'Termina la estructura condicional: se completó el caso de cola vacía o el de cola con elementos.');
+        addStep(15, 'total aumenta en uno porque se incorporó un nuevo nodo.', () => { total++; renderQueue(); });
+        addStep(16, 'Finaliza enqueue(). La solicitud permanece enlazada al final de la cola.');
+    }
+
+    function makeDequeueSteps() {
+        steps = [];
+        addStep(1, 'Entramos en dequeue(). Se extraerá el nodo que actualmente señala frente.');
+        if (frente === null) {
+            addStep(2, 'estaVacia() devuelve true porque frente == null. No existe ningún nodo que pueda extraerse.');
+            addStep(3, 'Se lanza EstructuraVaciaException. La operación termina por la excepción.');
+            addStep(4, 'Este es el mensaje de la excepción: indica que no hay solicitudes para atender.');
+            addStep(5, 'Cierra la llamada al constructor de EstructuraVaciaException.');
+            addStep(6, 'Cierra la validación. La cola permanece sin cambios.');
+            return;
+        }
+        const firstNode = frente;
+        addStep(2, 'estaVacia() devuelve false. Hay al menos un nodo, por lo que la extracción puede continuar.');
+        addStep(7, 'Se obtiene el dato del nodo señalado por frente y se conserva en solicitud, porque ese nodo será retirado.', () => {
+            ultimaExtraccion = firstNode.value;
+            renderQueue();
+        });
+        addStep(8, 'frente avanza al nodo siguiente. El primer nodo queda separado de la cadena que representa la cola.', () => {
+            frente = firstNode.next;
+            nodoExtraido = firstNode;
+            renderQueue();
+        });
+        const becomesEmpty = firstNode.next === null;
+        addStep(9, becomesEmpty
+            ? 'Después de avanzar, frente == null. Se acaba de extraer el único nodo que tenía la cola.'
+            : 'Después de avanzar, frente != null. Todavía quedan solicitudes en la cola.');
+        if (becomesEmpty) {
+            addStep(10, 'Como la cola quedó vacía, fondo también debe pasar a null. Así ambos punteros indican que no hay nodos.', () => {
+                fondo = null;
+                renderQueue();
+            });
+        }
+        addStep(11, 'Cierra la condición que comprueba si se extrajo el último elemento.');
+        addStep(12, 'total disminuye en uno porque se quitó un nodo de la cola.', () => { total--; renderQueue(); });
+        addStep(13, 'Devuelve la solicitud que se guardó antes de mover frente.');
+        addStep(14, 'Finaliza dequeue(). El primer elemento ya fue extraído.');
+    }
+
+    function makeChip(text, className) {
+        const chip = document.createElement('span');
+        chip.className = 'chip ' + className;
+        chip.textContent = text;
+        return chip;
+    }
+
+    function buildQueueNode(node, state = '') {
+        const wrap = document.createElement('div');
+        wrap.className = 'node-wrap';
+        const tags = document.createElement('div');
+        tags.className = 'tag-row';
+        if (node === frente) tags.appendChild(makeChip('frente', 'chip-front'));
+        if (node === fondo) tags.appendChild(makeChip('fondo', 'chip-rear'));
+        if (state === 'pending') tags.appendChild(makeChip('nuevoNodo', 'chip-new'));
+        wrap.appendChild(tags);
+
+        const box = document.createElement('div');
+        box.className = 'queue-node' + (state ? ' ' + state : '');
+        const data = document.createElement('div');
+        data.className = 'node-data';
+        data.textContent = 'Solicitud #' + node.value;
+        const next = document.createElement('div');
+        next.className = 'node-next';
+        const dot = document.createElement('span');
+        dot.className = 'dot';
+        next.appendChild(dot);
+        box.append(data, next);
+        wrap.appendChild(box);
+        return wrap;
+    }
+
+    function renderQueue() {
+        visualQueue.innerHTML = '';
+        const row = document.createElement('div');
+        row.className = 'queue-row';
+        const linkedNodes = [];
+        const visited = new Set();
+        let current = frente;
+        while (current && !visited.has(current)) {
+            visited.add(current);
+            linkedNodes.push(current);
+            current = current.next;
+        }
+
+        if (linkedNodes.length === 0) {
+            const empty = document.createElement('div');
+            empty.className = 'empty-msg';
+            empty.innerHTML = '<strong>Cola vacía</strong><br>frente = null &nbsp;·&nbsp; fondo = null';
+            row.appendChild(empty);
+        } else {
+            linkedNodes.forEach((node, index) => {
+                row.appendChild(buildQueueNode(node));
+                if (index < linkedNodes.length - 1) {
+                    const arrow = document.createElement('div');
+                    arrow.className = 'link-arrow';
+                    row.appendChild(arrow);
+                }
+            });
+        }
+        visualQueue.appendChild(row);
+
+        const extras = document.createElement('div');
+        extras.className = 'extras-row';
+        if (nuevoNodoPendiente) {
+            const card = document.createElement('div');
+            card.className = 'extra-card';
+            card.innerHTML = '<span>nuevoNodo:</span><strong>Solicitud #' + escapeHtml(nuevoNodoPendiente.value) + '</strong><span class="extra-note">todavía sin enlazar</span>';
+            extras.appendChild(card);
+        }
+        if (nodoExtraido) {
+            const card = document.createElement('div');
+            card.className = 'extra-card removed-card';
+            const rearStillPointsHere = fondo === nodoExtraido;
+            card.innerHTML = '<span>Solicitud extraída:</span><strong>#' + escapeHtml(nodoExtraido.value) + '</strong>' +
+                (rearStillPointsHere ? '<span class="chip chip-rear">fondo</span>' : '');
+            extras.appendChild(card);
+        }
+        if (ultimaExtraccion && !nodoExtraido) {
+            const card = document.createElement('div');
+            card.className = 'extra-card removed-card';
+            card.innerHTML = '<span>Último retorno:</span><strong>Solicitud #' + escapeHtml(ultimaExtraccion) + '</strong>';
+            extras.appendChild(card);
+        }
+        if (extras.childElementCount) visualQueue.appendChild(extras);
+
+        const count = document.createElement('div');
+        count.style.cssText = 'text-align:center;color:#718096;font-size:.76rem;font-weight:700;';
+        count.textContent = 'total = ' + total;
+        visualQueue.appendChild(count);
+    }
+
+    function startSim() {
+        if (simulating) return;
+        const name = methodSelect.value;
+        // El resultado anterior no debe confundirse con la operación que comienza.
+        ultimaExtraccion = '';
+        nodoExtraido = null;
+        if (name === 'enqueue') {
+            const input = document.getElementById('request-id');
+            const value = input ? input.value.trim() : '';
+            if (!value) {
+                statusMsg.textContent = 'Escribe el ID de la solicitud que se agregará.';
+                if (input) input.focus();
+                return;
+            }
+            makeEnqueueSteps(value);
+        } else {
+            makeDequeueSteps();
+        }
+        stepIndex = -1;
+        simulating = true;
+        setBusy(true);
+        nextStep();
+    }
+
+    function nextStep() {
+        if (!simulating) return;
+        stepIndex++;
+        if (stepIndex >= steps.length) {
+            finishSim();
+            return;
+        }
+        const step = steps[stepIndex];
+        if (step.apply) step.apply();
+        highlightLine(step.line);
+        showLineGuide(methodSelect.value, step.line);
+        statusMsg.textContent = step.message;
+        btnNext.textContent = stepIndex === steps.length - 1 ? 'Finalizar' : 'Siguiente paso';
+    }
+
+    function runAll() {
+        while (simulating) nextStep();
+    }
+
+    function finishSim() {
+        const name = methodSelect.value;
+        simulating = false;
+        steps = [];
+        stepIndex = -1;
+        setBusy(false);
+        clearHighlights();
+        if (name === 'enqueue') {
+            appendConsole('enqueue(): solicitud agregada. total = ' + total + '.');
+            statusMsg.textContent = 'enqueue() finalizó. La solicitud quedó al final y la cola conserva sus enlaces.';
+        } else if (ultimaExtraccion && nodoExtraido) {
+            appendConsole('dequeue(): se devolvió Solicitud #' + ultimaExtraccion + '. total = ' + total + '.');
+            nodoExtraido = null;
+            renderQueue();
+            statusMsg.textContent = 'dequeue() finalizó. Se extrajo Solicitud #' + ultimaExtraccion + '.';
+        } else if (frente === null) {
+            appendConsole('dequeue(): excepción EstructuraVaciaException. La cola no cambió.');
+            statusMsg.textContent = 'La cola está vacía. Se produjo EstructuraVaciaException y no se modificó la estructura.';
+        } else {
+            appendConsole('dequeue(): extracción completada. total = ' + total + '.');
+            statusMsg.textContent = 'dequeue() finalizó. La cola conserva los nodos restantes.';
+        }
+        renderQueue();
+    }
+
+    function abortSim() {
+        simulating = false;
+        steps = [];
+        stepIndex = -1;
+        setBusy(false);
+        clearHighlights();
+    }
+
+    function resetLab() {
+        abortSim();
+        loadExample();
+        statusMsg.textContent = 'Cola reiniciada con tres solicitudes de ejemplo: 104, 105 y 106.';
+        renderQueue();
+    }
+
+    function emptyQueue() {
+        abortSim();
+        frente = null;
+        fondo = null;
+        total = 0;
+        nuevoNodoPendiente = null;
+        nodoExtraido = null;
+        ultimaExtraccion = '';
+        statusMsg.textContent = 'Cola vacía: frente = null y fondo = null.';
+        renderQueue();
+    }
+
+    // Inicialización
+    applyZoom();
+    loadExample();
+    changeMethod();
+    renderQueue();
+    refreshConsole();
+</script>
+</body>
+</html>

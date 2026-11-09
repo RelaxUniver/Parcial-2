@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Guía interactiva: Recursividad línea por línea</title>
+<style>
+:root{
+  --bg-color:#f8f9fa;--code-bg:#282c34;--code-text:#abb2bf;--highlight-bg:#3e4451;--text-color:#2c3e50;
+  --blue:#3498db;--green:#2ecc71;--purple:#8e44ad;--orange:#e67e22;--arrow:#7f8c8d;
+  /* Zoom independiente: código y representación visual */
+  --code-zoom:1;--visual-zoom:1;
+}
+*{box-sizing:border-box}
+html,body{min-height:100%}
+body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:var(--bg-color);margin:0;padding:20px;display:flex;justify-content:center;align-items:flex-start;gap:20px;min-height:100vh;color:var(--text-color)}
+.panel{background:#fff;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.08);padding:20px;height:calc(100vh - 40px);min-height:0;overflow-y:auto}
+
+/* ---------- Herramientas (zoom + pantalla completa) ---------- */
+.tools{display:inline-flex;align-items:center;gap:4px;flex-wrap:nowrap}
+.tools .tool{padding:3px 9px;font-size:.8rem;line-height:1.3;border-radius:5px;border:0;cursor:pointer;background:#3e4451;color:#e6e9ee;font-weight:bold;min-width:28px}
+.tools .tool:hover:not(:disabled){background:#566074}
+.tools .tool:disabled{opacity:.4;cursor:not-allowed;background:#3e4451}
+.tools .zoom-label{font-size:.72rem;min-width:40px;text-align:center;font-weight:700;color:inherit}
+.tools .tool-title{font-size:.7rem;font-weight:700;margin-right:3px;color:inherit;opacity:.8}
+.visual-tools{color:#5d6d7e}
+.visual-tools .tool{background:#e5edf5;color:#2c3e50}
+.visual-tools .tool:hover:not(:disabled){background:#d2e0ee}
+.visual-tools .tool:disabled{background:#e5edf5}
+
+/* ---------- Panel de código ---------- */
+.code-panel{width:46%;background:var(--code-bg);color:var(--code-text);font-family:Consolas,'Courier New',monospace;font-size:calc(13.5px * var(--code-zoom));line-height:1.5;display:flex;flex-direction:column}
+.code-panel>*{flex-shrink:0}
+.code-header{color:#61afef;margin-bottom:15px;font-weight:bold;font-size:14px;border-bottom:1px solid #3e4451;padding-bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.code-header .code-title{display:flex;flex-direction:column;gap:2px;min-width:0}
+#source-label{font-size:.78em;color:#e5c07b;font-weight:normal;overflow-wrap:anywhere}
+.code-body{margin:0}
+.line{display:flex;align-items:flex-start;padding:2px 6px 2px 0;border-radius:4px;border-left:3px solid transparent;transition:background-color .2s;cursor:pointer}
+.line .ln{flex:0 0 2.4em;text-align:right;padding-right:.7em;color:#636b78;user-select:none}
+.line .code{flex:1;min-width:0;white-space:pre-wrap;overflow-wrap:anywhere}
+.line.active{background:var(--highlight-bg);border-left-color:#61afef;color:#fff}
+.line.active .ln{color:#61afef}
+.line:not(.active):hover{background:rgba(97,175,239,.10)}
+
+
+/* ---------- Colores del código (igual que Pila y Cola) ---------- */
+.keyword{color:#c678dd}.type{color:#e5c07b}.method{color:#61afef}.string{color:#98c379}.number{color:#d19a66}
+
+/* ---------- Panel visual ---------- */
+.visual-panel{width:50%;display:flex;flex-direction:column;align-items:stretch}
+/* Evita que los bloques se compriman y se encimen los textos */
+.visual-panel>*{flex-shrink:0}
+.visual-top{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+.visual-header{font-size:1.2rem;font-weight:bold;color:#2c3e50;flex:1 1 auto}
+.intro{margin:0 0 12px;text-align:center;color:#718096;font-size:.78rem;line-height:1.4}
+.legend{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin:0 0 10px;color:#617080;font-size:.78rem}
+.legend-item{display:inline-flex;align-items:center;gap:6px}
+.swatch{width:11px;height:11px;border-radius:3px;display:inline-block}
+.swatch-node{background:#e8f4f8;border:2px solid #2980b9}
+.swatch-call{background:#f3e8ff;border:2px solid #8e44ad}
+.swatch-current{background:#fff1df;border:2px solid #e67e22}
+
+/* Contenedor externo: se desplaza. Interno: recibe el zoom */
+.visual-box{padding:14px;background:#f1f2f6;border-radius:12px;border:2px dashed #bdc3c7;min-height:178px;max-height:470px;width:100%;overflow:auto}
+.visual-inner{width:100%;zoom:var(--visual-zoom)}
+.visual-section-title{font-size:.82rem;font-weight:700;color:#607080;margin-bottom:9px}
+.nodes{display:flex;align-items:center;gap:8px 7px;flex-wrap:wrap;min-height:58px}
+.node-wrap{display:inline-flex;align-items:center;gap:7px}
+.node-card{min-width:82px;max-width:140px;padding:8px 10px;border:2px solid #2980b9;border-radius:8px;background:#e8f4f8;text-align:center;box-shadow:0 2px 5px rgba(0,0,0,.06);transition:.2s}
+.node-card.current{border:2px solid #e67e22;background:#fff1df;box-shadow:0 0 0 2px #e67e22,0 2px 5px rgba(0,0,0,.06)}
+.node-name{font-weight:700;font-size:.82rem;overflow-wrap:anywhere}
+.node-type{font-size:.65rem;color:#64748b;margin-top:3px}
+.arrow{color:var(--arrow);font-size:1rem;font-weight:700}
+.null-label{font-family:Consolas,monospace;font-size:.75rem;color:#7f8c8d;padding:4px}
+.recursion-area{margin-top:16px;padding-top:12px;border-top:1px solid #d7dce2}
+.frames{display:flex;gap:8px 7px;flex-wrap:wrap;align-items:flex-start;min-height:38px}
+.frame{padding:7px 9px;border-radius:7px;border:2px solid #8e44ad;background:#f4eafa;color:#63317b;font-size:.72rem;line-height:1.3;max-width:180px;overflow-wrap:anywhere}
+.frame:last-child{border-color:#e67e22;background:#fff1df;color:#8a4b0b}
+.empty-state{color:#9aa5b1;font-size:.8rem;font-style:italic}
+.result-box{margin-top:14px;padding:9px 12px;border-radius:8px;background:#e8f8f5;border:1px solid #1abc9c;color:#176d60;font-size:.82rem;line-height:1.4;overflow-wrap:anywhere}
+
+.line-guide{margin-top:14px;padding:14px 16px;border:1px solid #d7e3ef;border-left:4px solid #3498db;border-radius:10px;background:#f4f8fc;box-shadow:0 2px 8px rgba(44,62,80,.05)}
+.guide-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.guide-kicker{color:#3498db;font-size:.68rem;font-weight:800;letter-spacing:.09em}
+.guide-title{margin:3px 0 0;color:#2c3e50;font-size:1.02rem}
+.guide-counter{flex:0 0 auto;color:#5d6d7e;background:#e5edf5;border-radius:20px;padding:5px 9px;font-size:.72rem;font-weight:700}
+.guide-code{display:block;margin-top:10px;padding:8px 10px;border-radius:6px;background:#282c34;color:#98c379;font:.82rem/1.45 Consolas,'Courier New',monospace;white-space:pre-wrap;overflow-wrap:anywhere}
+.guide-text{margin:10px 0 0;color:#405366;font-size:.9rem;line-height:1.5}
+.guide-hint{margin-top:9px;color:#6c7a89;font-size:.76rem}
+.status-message{margin-top:12px;font-weight:bold;color:#e67e22;min-height:42px;text-align:center;line-height:1.4}
+.controls{margin-top:10px;display:flex;flex-direction:column;gap:12px;width:100%;align-items:center}
+.control-row{display:flex;gap:10px;align-items:center;justify-content:center;width:100%;flex-wrap:wrap}
+.controls select,.controls button{padding:9px 12px;border:1px solid #ccc;border-radius:6px;font-size:.92rem;max-width:100%}
+.controls select{min-width:280px;flex:1}
+.controls button{border:0;font-weight:bold;cursor:pointer;transition:background .2s,transform .1s}
+.controls button:active{transform:scale(.98)}
+.controls button:disabled{background:#bdc3c7!important;cursor:not-allowed}
+.btn-action{background:#3498db;color:#fff}.btn-action:hover{background:#2980b9}
+.btn-next{background:#2ecc71;color:#fff}.btn-next:hover{background:#27ae60}
+.btn-all{background:#8e44ad;color:#fff}.btn-all:hover{background:#732d91}
+.btn-reset{background:#95a5a6;color:#fff}.btn-reset:hover{background:#7f8c8d}
+
+/* ---------- Pantalla completa ---------- */
+body.is-fullscreen{padding:10px;overflow:auto}
+body.is-fullscreen .panel{height:calc(100vh - 20px)}
+
+@media(max-width:1000px){
+  body{flex-direction:column;align-items:stretch}
+  .panel{width:100%!important;height:auto}
+  .code-panel{min-height:320px}
+  .controls select{min-width:0;width:100%}
+  body.is-fullscreen .panel{height:auto}
+}
+@media(max-width:520px){
+  body{padding:10px;gap:12px}
+  .panel{padding:14px}
+  .guide-head{flex-direction:column}
+  .guide-counter{align-self:flex-start}
+  .visual-box{padding:10px}
+}
+</style>
+</head>
+<body>
+<div class="panel code-panel">
+  <div class="code-header">
+    <div class="code-title"><span>Código recursivo · proyecto Java</span><span id="source-label"></span></div>
+    <div class="tools" role="group" aria-label="Tamaño del código">
+      <span class="tool-title">Código</span>
+      <button type="button" class="tool" id="code-minus" onclick="changeZoom('code',-1)" title="Reducir código" aria-label="Reducir tamaño del código">−</button>
+      <span class="zoom-label" id="code-zoom-label">100%</span>
+      <button type="button" class="tool" id="code-plus" onclick="changeZoom('code',1)" title="Aumentar código" aria-label="Aumentar tamaño del código">+</button>
+    </div>
+  </div>
+  <div class="code-body" id="code-display"></div>
+</div>
+<div class="panel visual-panel">
+  <div class="visual-top">
+    <div class="visual-header" id="visual-title">Cómo funciona la recursividad</div>
+    <div class="tools visual-tools" role="group" aria-label="Tamaño de la representación">
+      <span class="tool-title">Visual</span>
+      <button type="button" class="tool" id="visual-minus" onclick="changeZoom('visual',-1)" title="Reducir representación" aria-label="Reducir tamaño de la representación">−</button>
+      <span class="zoom-label" id="visual-zoom-label">100%</span>
+      <button type="button" class="tool" id="visual-plus" onclick="changeZoom('visual',1)" title="Aumentar representación" aria-label="Aumentar tamaño de la representación">+</button>
+      <button type="button" class="tool" id="btn-fullscreen" onclick="toggleFullscreen()" title="Pantalla completa" aria-label="Pantalla completa">⛶</button>
+    </div>
+  </div>
+  <p class="intro">Observa cómo cada llamada avanza hacia el caso base y cómo los resultados regresan al desapilar las llamadas.</p>
+  <div class="legend">
+    <span class="legend-item"><i class="swatch swatch-node"></i>Nodo de la lista</span>
+    <span class="legend-item"><i class="swatch swatch-current"></i>Nodo actual</span>
+    <span class="legend-item"><i class="swatch swatch-call"></i>Llamada pendiente</span>
+  </div>
+  <div class="visual-box">
+    <div class="visual-inner">
+      <div class="visual-section-title">Lista enlazada que se está recorriendo</div>
+      <div class="nodes" id="visual-nodes"></div>
+      <div class="recursion-area">
+        <div class="visual-section-title">Pila de llamadas recursivas (de la primera a la última)</div>
+        <div class="frames" id="call-frames"><span class="empty-state">Aún no se ha iniciado ninguna llamada.</span></div>
+      </div>
+      <div class="result-box" id="result-box">Resultado / retorno: pendiente.</div>
+    </div>
+  </div>
+  <section class="line-guide" aria-live="polite">
+    <div class="guide-head"><div><div class="guide-kicker">EXPLICACIÓN DETALLADA</div><h3 class="guide-title" id="guide-title">Propósito del método</h3></div><span class="guide-counter" id="guide-counter">Vista general</span></div>
+    <code class="guide-code" id="guide-code" hidden></code>
+    <p class="guide-text" id="guide-text">Selecciona un método. Haz clic en cualquiera de sus líneas para leer su explicación o inicia la simulación para observar las llamadas y los retornos.</p>
+    <div class="guide-hint">El caso base detiene las llamadas. Después, las llamadas pendientes terminan de ejecutar sus instrucciones al regresar.</div>
+  </section>
+  <div class="status-message" id="status-msg">Selecciona un método para comenzar.</div>
+  <div class="controls">
+    <div class="control-row"><select id="method-select" aria-label="Método recursivo"></select></div>
+    <div class="control-row">
+      <button class="btn-action" id="btn-start" type="button">Iniciar simulación</button>
+      <button class="btn-next" id="btn-next" type="button" disabled>Siguiente paso</button>
+      <button class="btn-all" id="btn-all" type="button" disabled>Ejecutar todo</button>
+    </div>
+    <div class="control-row"><button class="btn-reset" id="btn-reset" type="button">Reiniciar ejemplo</button></div>
+  </div>
+</div>
+<script>
+const METHODS = {"insertarOrdenadoRec":{"title":"Inserción ordenada","source":"ListaAsignaturas.java · insertarOrdenado() e insertarOrdenadoRec()","description":"Inserta una asignatura manteniendo el orden alfabético. La llamada recursiva avanza hasta encontrar la posición; al regresar, cada llamada vuelve a enlazar su nodo.","reuse":"La misma lógica aparece en ListaProfesores.insertarOrdenadoRec(), cambiando NodoAsignatura por NodoProfesor.","nodes":[["Ana","Asignatura"],["Carlos","Asignatura"],["Marta","Asignatura"]],"code":["NodoAsignatura nuevoNodo = new NodoAsignatura(asignatura);","cabeza = insertarOrdenadoRec(cabeza, nuevoNodo);","total++;","","private NodoAsignatura insertarOrdenadoRec(","    NodoAsignatura nodo,","    NodoAsignatura nuevoNodo",") {","    if (nodo == null) {","        return nuevoNodo;","    }","","    int comparacion = nuevoNodo","        .getDato()","        .getNombre()","        .compareToIgnoreCase(nodo.getDato().getNombre());","","    if (comparacion < 0) {","        nuevoNodo.setSiguiente(nodo);","        return nuevoNodo;","    }","","    nodo.setSiguiente(","        insertarOrdenadoRec(nodo.getSiguiente(), nuevoNodo)","    );","","    return nodo;","}"],"explanations":["Se construye un NodoAsignatura que contiene el objeto que se va a insertar. Todavía no se ha conectado a la lista.","La recursividad comienza desde cabeza. El método devuelve la nueva referencia que debe quedar como cabeza después de insertar.","Se incrementa el contador porque la asignatura ya quedó incorporada a la lista.","Separación entre la llamada inicial y el método recursivo.","Declara el método auxiliar. Recibe el nodo donde se está situado y el nuevo nodo que debe insertarse.","Parámetro que representa el nodo actual de la lista durante esta llamada.","Parámetro que conserva el nodo que se insertará durante todas las llamadas.","Comienza el cuerpo del método recursivo.","Caso base: si nodo es null, se llegó al final de la lista. También puede ser la posición correcta de inserción.","Devuelve el nuevo nodo. La llamada anterior utilizará esta referencia para enlazarlo.","Cierra el caso base.","Separa el caso base del cálculo de la posición.","Comienza a calcular la comparación entre el nombre nuevo y el nombre del nodo actual.","Obtiene el objeto Asignatura almacenado en el nuevo nodo.","Obtiene el nombre de la asignatura que se insertará.","Compara ambos nombres ignorando mayúsculas y minúsculas. Un resultado negativo significa que el nuevo nombre va antes.","Separa el cálculo de la decisión.","Comprueba si el nuevo nodo debe colocarse antes del nodo actual.","Enlaza el nuevo nodo con el nodo actual; así el actual queda inmediatamente después del nuevo.","Devuelve el nuevo nodo para que el llamador lo conecte con la parte anterior de la lista.","Cierra la condición de inserción antes del nodo actual.","Separa la inserción antes del nodo actual del avance recursivo.","Comienza la reasignación del enlace siguiente del nodo actual.","Llama al método con el siguiente nodo. Cada llamada avanza una posición hacia el final de la lista.","Cierra la llamada dentro de setSiguiente. Su resultado será el nuevo enlace siguiente.","Separa el enlace recursivo del retorno del nodo actual.","Devuelve el nodo actual. Al regresar, la llamada anterior lo enlaza de nuevo, reconstruyendo la lista.","Termina el método recursivo."],"steps":[[0,"Se crea el nuevo nodo con el valor «Lucía». La lista original sigue siendo Ana → Carlos → Marta.",["Ana","Carlos","Marta"],[],"nuevoNodo = Lucía"],[1,"Se inicia la primera llamada con cabeza (Ana) y el nodo nuevo (Lucía).",["Ana","Carlos","Marta"],["Ana · nodo=Ana, nuevo=Lucía"],"Llamada inicial"],[8,"Ana no es null: todavía hay un nodo que comparar.",["Ana","Carlos","Marta"],["Ana · nodo=Ana, nuevo=Lucía"],"Caso base: falso"],[12,"Se compara «Lucía» con «Ana». Como Lucía va después, no se inserta aquí.",["Ana","Carlos","Marta"],["Ana · nodo=Ana, nuevo=Lucía"],"comparacion > 0"],[23,"La llamada avanza a Carlos. El marco de Ana queda esperando el resultado para actualizar su enlace siguiente.",["Ana","Carlos","Marta"],["Ana · esperando retorno","Carlos · nodo=Carlos, nuevo=Lucía"],"Bajando en la recursividad"],[8,"Carlos tampoco es null.",["Ana","Carlos","Marta"],["Ana · esperando retorno","Carlos · nodo=Carlos, nuevo=Lucía"],"Caso base: falso"],[12,"Lucía también va después de Carlos. Se debe continuar avanzando.",["Ana","Carlos","Marta"],["Ana · esperando retorno","Carlos · nodo=Carlos, nuevo=Lucía"],"comparacion > 0"],[23,"Se crea una nueva llamada para Marta. Las llamadas anteriores permanecen pendientes.",["Ana","Carlos","Marta"],["Ana · esperando retorno","Carlos · esperando retorno","Marta · nodo=Marta, nuevo=Lucía"],"Bajando en la recursividad"],[8,"Marta no es null, por lo que todavía se evalúa su posición.",["Ana","Carlos","Marta"],["Ana · esperando retorno","Carlos · esperando retorno","Marta · nodo=Marta, nuevo=Lucía"],"Caso base: falso"],[12,"Lucía va después de Marta. La llamada debe continuar con Marta.getSiguiente().",["Ana","Carlos","Marta"],["Ana · esperando retorno","Carlos · esperando retorno","Marta · esperando retorno"],"comparacion > 0"],[23,"La siguiente referencia de Marta es null. Se produce una última llamada con nodo=null.",["Ana","Carlos","Marta"],["Ana · esperando retorno","Carlos · esperando retorno","Marta · esperando retorno","null · nuevo=Lucía"],"Última llamada"],[8,"Ahora sí se cumple nodo == null. Este es el caso base que detiene nuevas llamadas.",["Ana","Carlos","Marta"],["Ana · esperando retorno","Carlos · esperando retorno","Marta · esperando retorno","null · caso base"],"Caso base: verdadero"],[9,"El caso base devuelve Lucía. La recursividad deja de profundizar y comienza el retorno.",["Ana","Carlos","Marta","Lucía"],["Ana · esperando retorno","Carlos · esperando retorno","Marta · esperando retorno"],"Retorna Lucía"],[24,"La llamada de Marta recibe Lucía y la asigna a su siguiente. Queda Marta → Lucía.",["Ana","Carlos","Marta","Lucía"],["Ana · esperando retorno","Carlos · esperando retorno","Marta · enlaza Lucía"],"Marta.setSiguiente(Lucía)"],[26,"Marta devuelve su propia referencia para que Carlos pueda enlazarla.",["Ana","Carlos","Marta","Lucía"],["Ana · esperando retorno","Carlos · enlaza retorno","Marta · completada"],"Retorna Marta"],[24,"Carlos recibe la referencia de Marta y conserva el enlace Carlos → Marta.",["Ana","Carlos","Marta","Lucía"],["Ana · esperando retorno","Carlos · enlaza Marta"],"Carlos.setSiguiente(Marta)"],[26,"Carlos devuelve su referencia a la llamada de Ana.",["Ana","Carlos","Marta","Lucía"],["Ana · enlaza retorno","Carlos · completada"],"Retorna Carlos"],[24,"Ana recibe la referencia de Carlos. La cadena completa queda reconstruida.",["Ana","Carlos","Marta","Lucía"],["Ana · enlaza Carlos"],"Ana.setSiguiente(Carlos)"],[26,"La llamada más externa devuelve Ana; la cabeza conserva su referencia original.",["Ana","Carlos","Marta","Lucía"],[],"Retorna cabeza = Ana"],[1,"La asignación recibe la referencia devuelta. cabeza sigue apuntando a Ana, ahora enlazada a Lucía al final.",["Ana","Carlos","Marta","Lucía"],[],"cabeza = Ana"],[2,"Se actualiza total porque se agregó exactamente un nodo.",["Ana","Carlos","Marta","Lucía"],[],"total incrementado"]]},"insertarFinalRec":{"title":"Inserción al final","source":"ListaDepartamentos.java · insertarFinal() e insertarFinalRec()","description":"Avanza recursivamente hasta encontrar una referencia null. En el retorno, cada nodo conserva su siguiente, y el último conecta con el nuevo departamento.","reuse":"Es el algoritmo de inserción final usado por ListaDepartamentos.","nodes":[["Ciencias","Departamento"],["Humanidades","Departamento"]],"code":["NodoDepartamento nuevoNodo = new NodoDepartamento(departamento);","cabeza = insertarFinalRec(cabeza, nuevoNodo);","total++;","","private NodoDepartamento insertarFinalRec(","    NodoDepartamento nodo,","    NodoDepartamento nuevoNodo",") {","    if (nodo == null) {","        return nuevoNodo;","    }","","    nodo.setSiguiente(","        insertarFinalRec(nodo.getSiguiente(), nuevoNodo)","    );","","    return nodo;","}"],"explanations":["Crea el nodo que contiene el nuevo departamento.","Invoca el auxiliar desde cabeza y reemplaza cabeza por la referencia que el método devuelve.","Incrementa el número de departamentos después de completar la inserción.","Separación visual.","Declara el método recursivo que devuelve la referencia de inicio de la cadena resultante.","Es el nodo donde se encuentra esta llamada.","Es el nodo que se agregará al final.","Comienza el método.","Caso base: nodo == null significa que se alcanzó el final de la lista.","Devuelve el nodo nuevo. La llamada anterior lo colocará como su siguiente.","Cierra el caso base.","Separación entre el caso base y la llamada recursiva.","Actualiza el enlace siguiente con la referencia que devuelva la llamada recursiva.","Avanza al siguiente nodo. Si es null, se activa el caso base; si no, se crea otra llamada.","Cierra la llamada a setSiguiente.","Separación visual.","Devuelve el nodo actual para que la llamada anterior reconstruya la cadena.","Termina el auxiliar recursivo."],"steps":[[0,"Se crea el nodo «Ingeniería»; aún no está enlazado.",["Ciencias","Humanidades"],[],"nuevoNodo = Ingeniería"],[1,"La primera llamada empieza en cabeza, que apunta a Ciencias.",["Ciencias","Humanidades"],["Ciencias · nodo=Ciencias"],"Llamada inicial"],[8,"Ciencias no es null, por lo que se debe continuar hacia el siguiente nodo.",["Ciencias","Humanidades"],["Ciencias · esperando retorno"],"Caso base: falso"],[13,"Se invoca insertarFinalRec con Ciencias.getSiguiente(), que apunta a Humanidades.",["Ciencias","Humanidades"],["Ciencias · esperando retorno","Humanidades · nodo=Humanidades"],"Bajando"],[8,"Humanidades tampoco es null; todavía no se llegó al final.",["Ciencias","Humanidades"],["Ciencias · esperando retorno","Humanidades · esperando retorno"],"Caso base: falso"],[13,"Se invoca el auxiliar con Humanidades.getSiguiente(), que vale null.",["Ciencias","Humanidades"],["Ciencias · esperando retorno","Humanidades · esperando retorno","null · nodo=null"],"Última llamada"],[8,"La llamada recibe null. Se alcanza el caso base.",["Ciencias","Humanidades"],["Ciencias · esperando retorno","Humanidades · esperando retorno","null · caso base"],"Caso base: verdadero"],[9,"Se devuelve Ingeniería. Este retorno conecta el nuevo nodo al último departamento.",["Ciencias","Humanidades","Ingeniería"],["Ciencias · esperando retorno","Humanidades · esperando retorno"],"Retorna Ingeniería"],[12,"La llamada de Humanidades asigna el resultado a su siguiente: Humanidades → Ingeniería.",["Ciencias","Humanidades","Ingeniería"],["Ciencias · esperando retorno","Humanidades · enlaza Ingeniería"],"setSiguiente(Ingeniería)"],[16,"Humanidades devuelve su referencia a la llamada de Ciencias.",["Ciencias","Humanidades","Ingeniería"],["Ciencias · enlaza retorno","Humanidades · completada"],"Retorna Humanidades"],[12,"Ciencias conserva su siguiente, que ahora representa toda la cadena desde Humanidades.",["Ciencias","Humanidades","Ingeniería"],["Ciencias · enlaza Humanidades"],"setSiguiente(Humanidades)"],[16,"Ciencias devuelve la referencia original de la lista.",["Ciencias","Humanidades","Ingeniería"],[],"Retorna cabeza = Ciencias"],[1,"La cabeza recibe la referencia devuelta; Ingeniería queda incorporado al final.",["Ciencias","Humanidades","Ingeniería"],[],"cabeza = Ciencias"],[2,"Se incrementa el total de departamentos.",["Ciencias","Humanidades","Ingeniería"],[],"total incrementado"]]},"buscarRec":{"title":"Búsqueda recursiva","source":"ListaAsignaturas.java · buscar() y buscarRec()","description":"Compara el nombre buscado con el dato del nodo actual. Si no coincide, llama al mismo método con el siguiente nodo. Devuelve el nodo encontrado o null.","reuse":"La misma estructura de búsqueda se utiliza en ListaDepartamentos y ListaProfesores, cambiando el tipo de nodo y el dato comparado.","nodes":[["Álgebra","Asignatura"],["Cálculo","Asignatura"],["Física","Asignatura"],["Geometría","Asignatura"]],"code":["NodoAsignatura nodo = buscarRec(cabeza, nombreValido);","","private NodoAsignatura buscarRec(NodoAsignatura nodo, String nombre) {","    if (nodo == null) {","        return null;","    }","","    if (nodo.getDato().getNombre().equalsIgnoreCase(nombre)) {","        return nodo;","    }","","    return buscarRec(nodo.getSiguiente(), nombre);","}"],"explanations":["El método público inicia la búsqueda desde cabeza y envía el nombre ya validado.","Separación visual.","Declara el auxiliar. Recibe el nodo desde el que debe continuar y el nombre que busca.","Caso base: si no hay nodo, se llegó al final sin encontrar coincidencia.","Devuelve null para indicar que el elemento no está en la lista.","Cierra el caso base.","Separación visual.","Compara el nombre almacenado en el nodo actual con el nombre buscado, ignorando mayúsculas.","Si coinciden, devuelve el nodo actual: la búsqueda termina aquí.","Cierra la condición de coincidencia.","Separación visual.","Si no coincidió, se llama al mismo método con el siguiente nodo. Así se avanza una posición.","Termina el método recursivo."],"steps":[[0,"La búsqueda de «Física» comienza desde cabeza, en Álgebra.",["Álgebra","Cálculo","Física","Geometría"],["nodo=Álgebra · busca Física"],"Búsqueda iniciada"],[3,"Álgebra no es null; la búsqueda puede continuar.",["Álgebra","Cálculo","Física","Geometría"],["nodo=Álgebra · busca Física"],"Caso base: falso"],[7,"Álgebra no coincide con Física.",["Álgebra","Cálculo","Física","Geometría"],["nodo=Álgebra · busca Física"],"No coincide"],[11,"Se llama a buscarRec con Álgebra.getSiguiente(), es decir, Cálculo.",["Álgebra","Cálculo","Física","Geometría"],["Álgebra · espera","nodo=Cálculo · busca Física"],"Avanza a Cálculo"],[7,"Cálculo tampoco coincide con el nombre buscado.",["Álgebra","Cálculo","Física","Geometría"],["Álgebra · espera","nodo=Cálculo · busca Física"],"No coincide"],[11,"La siguiente llamada se realiza con el nodo Física.",["Álgebra","Cálculo","Física","Geometría"],["Álgebra · espera","Cálculo · espera","nodo=Física · busca Física"],"Avanza a Física"],[7,"Ahora la comparación es verdadera: el nombre del nodo actual es Física.",["Álgebra","Cálculo","Física","Geometría"],["Álgebra · espera","Cálculo · espera","nodo=Física"],"Coincidencia encontrada"],[8,"Se devuelve el nodo Física. No se necesita visitar Geometría.",["Álgebra","Cálculo","Física","Geometría"],["Álgebra · recibe retorno","Cálculo · recibe retorno"],"Retorna Nodo(Física)"],[0,"El método público recibe el nodo encontrado y puede devolver su dato al llamador.",["Álgebra","Cálculo","Física","Geometría"],[],"Resultado: Física"]]},"eliminarRec":{"title":"Eliminación recursiva","source":"ListaAsignaturas.java · eliminar() y eliminarRec()","description":"Busca recursivamente el nodo que debe eliminarse. Cuando lo encuentra, devuelve su siguiente; al regresar, las llamadas anteriores reasignan sus enlaces para saltar el nodo eliminado.","reuse":"El mismo patrón se utiliza para eliminar departamentos y profesores, con sus respectivos tipos de nodo.","nodes":[["Álgebra","Asignatura"],["Cálculo","Asignatura"],["Física","Asignatura"],["Geometría","Asignatura"]],"code":["cabeza = eliminarRec(cabeza, nombreValido);","total--;","","private NodoAsignatura eliminarRec(NodoAsignatura nodo, String nombre) {","    if (nodo == null) {","        return null;","    }","","    if (nodo.getDato().getNombre().equalsIgnoreCase(nombre)) {","        return nodo.getSiguiente();","    }","","    nodo.setSiguiente(","        eliminarRec(nodo.getSiguiente(), nombre)","    );","","    return nodo;","}"],"explanations":["Llama al método recursivo desde cabeza. La referencia devuelta sustituirá a cabeza si se elimina el primer nodo.","Reduce el contador porque se eliminó un elemento.","Separación visual.","Declara el método auxiliar. Devuelve la referencia a la cadena de nodos que permanece.","Caso base de seguridad: si nodo es null, no hay más elementos que revisar.","Devuelve null cuando la búsqueda alcanzó el final sin un nodo que procesar.","Cierra el caso base.","Separación visual.","Comprueba si el nodo actual contiene el nombre que se desea eliminar.","Devuelve el siguiente del nodo actual. Eso hace que la cadena lo salte.","Cierra la condición de eliminación.","Separación visual.","Comienza a reasignar el enlace siguiente del nodo actual usando el resultado recursivo.","La llamada continúa en el siguiente nodo hasta encontrar el objetivo.","Cierra la llamada a setSiguiente.","Separación visual.","Devuelve el nodo actual. La llamada anterior lo enlazará con la cadena ya actualizada.","Termina el método recursivo."],"steps":[[0,"Se inicia la eliminación de «Física» desde cabeza (Álgebra).",["Álgebra","Cálculo","Física","Geometría"],["nodo=Álgebra · busca Física"],"Eliminación iniciada"],[8,"Álgebra no coincide con Física.",["Álgebra","Cálculo","Física","Geometría"],["Álgebra · espera retorno"],"No coincide"],[12,"Se llama recursivamente con el siguiente nodo: Cálculo.",["Álgebra","Cálculo","Física","Geometría"],["Álgebra · espera","nodo=Cálculo · busca Física"],"Bajando"],[8,"Cálculo tampoco es el objetivo.",["Álgebra","Cálculo","Física","Geometría"],["Álgebra · espera","Cálculo · espera retorno"],"No coincide"],[12,"La siguiente llamada recibe el nodo Física.",["Álgebra","Cálculo","Física","Geometría"],["Álgebra · espera","Cálculo · espera","nodo=Física"],"Bajando"],[8,"Física coincide con el dato que se desea eliminar.",["Álgebra","Cálculo","Física","Geometría"],["Álgebra · espera","Cálculo · espera","nodo=Física"],"Coincidencia"],[9,"Se devuelve Física.getSiguiente(), que es Geometría. La referencia a Física deja de formar parte de la cadena.",["Álgebra","Cálculo","Geometría"],["Álgebra · espera retorno","Cálculo · recibe Geometría"],"Retorna Geometría"],[12,"La llamada de Cálculo conecta su siguiente con la referencia devuelta: Cálculo → Geometría.",["Álgebra","Cálculo","Geometría"],["Álgebra · espera retorno","Cálculo · enlaza Geometría"],"Cálculo.setSiguiente(Geometría)"],[16,"Cálculo devuelve su referencia a Álgebra.",["Álgebra","Cálculo","Geometría"],["Álgebra · recibe retorno","Cálculo · completada"],"Retorna Cálculo"],[12,"Álgebra vuelve a enlazar con Cálculo; su siguiente ya conduce a Geometría.",["Álgebra","Cálculo","Geometría"],["Álgebra · enlaza Cálculo"],"Álgebra.setSiguiente(Cálculo)"],[16,"Álgebra es devuelta y la cabeza conserva el inicio de la lista resultante.",["Álgebra","Cálculo","Geometría"],[],"Retorna Álgebra"],[0,"La asignación actualiza cabeza con la referencia devuelta. Física ya no está enlazada.",["Álgebra","Cálculo","Geometría"],[],"Lista final reconstruida"],[1,"Se decrementa total para reflejar la eliminación.",["Álgebra","Cálculo","Geometría"],[],"total decrementado"]]},"sumarHorasRec":{"title":"Suma recursiva","source":"ListaAsignaturas.java · sumarHoras() y sumarHorasRec()","description":"Cada llamada aporta las horas de su asignatura y suma el resultado de la llamada siguiente. El caso base devuelve cero para terminar la suma.","reuse":"Este cálculo recursivo está implementado en ListaAsignaturas.","nodes":[["Estructuras · 4 h","Asignatura"],["Matemática · 5 h","Asignatura"],["Programación · 6 h","Asignatura"]],"code":["return sumarHorasRec(cabeza);","","private int sumarHorasRec(NodoAsignatura nodo) {","    if (nodo == null) {","        return 0;","    }","","    return nodo.getDato().getHoras()","        + sumarHorasRec(nodo.getSiguiente());","}"],"explanations":["El método público inicia el cálculo desde el primer nodo de la lista.","Separación visual.","Declara un método que recibe el nodo actual y devuelve un entero: la suma desde ese nodo hasta el final.","Caso base: cuando no hay nodo, no quedan horas que sumar.","Devuelve cero, que no altera la suma acumulada.","Cierra el caso base.","Separación visual.","Obtiene las horas de la asignatura almacenada en el nodo actual.","Suma esas horas al resultado calculado recursivamente para el siguiente nodo.","Termina el método."],"steps":[[0,"El cálculo comienza en cabeza: Estructuras aporta 4 horas.",["Estructuras · 4 h","Matemática · 5 h","Programación · 6 h"],["nodo=Estructuras"],"Suma pendiente"],[7,"Se obtiene el valor local de la primera asignatura: 4.",["Estructuras · 4 h","Matemática · 5 h","Programación · 6 h"],["Estructuras · valor local=4"],"4 + ..."],[8,"La llamada recursiva continúa con Matemática; la suma aún no puede completarse.",["Estructuras · 4 h","Matemática · 5 h","Programación · 6 h"],["Estructuras · espera","Matemática · nodo actual"],"Descendiendo"],[7,"Matemática aporta 5 horas.",["Estructuras · 4 h","Matemática · 5 h","Programación · 6 h"],["Estructuras · espera","Matemática · valor local=5"],"5 + ..."],[8,"La llamada continúa con Programación.",["Estructuras · 4 h","Matemática · 5 h","Programación · 6 h"],["Estructuras · espera","Matemática · espera","Programación · nodo actual"],"Descendiendo"],[7,"Programación aporta 6 horas.",["Estructuras · 4 h","Matemática · 5 h","Programación · 6 h"],["Estructuras · espera","Matemática · espera","Programación · valor local=6"],"6 + ..."],[8,"La llamada pasa a Programación.getSiguiente(), que es null.",["Estructuras · 4 h","Matemática · 5 h","Programación · 6 h"],["Estructuras · espera","Matemática · espera","Programación · espera","null"],"Última llamada"],[3,"El nodo recibido es null: se alcanza el caso base.",["Estructuras · 4 h","Matemática · 5 h","Programación · 6 h"],["Estructuras · espera","Matemática · espera","Programación · espera","null · caso base"],"Caso base"],[4,"El caso base devuelve 0. Comienza a resolverse la suma en sentido inverso.",["Estructuras · 4 h","Matemática · 5 h","Programación · 6 h"],["Estructuras · espera","Matemática · espera","Programación · retorno"],"Retorna 0"],[8,"Programación calcula 6 + 0 y devuelve 6.",["Estructuras · 4 h","Matemática · 5 h","Programación · completada"],["Estructuras · espera","Matemática · espera"],"Retorna 6"],[8,"Matemática calcula 5 + 6 y devuelve 11.",["Estructuras · 4 h","Matemática · completada"],["Estructuras · espera"],"Retorna 11"],[8,"Estructuras calcula 4 + 11. La suma total es 15 horas.",["Estructuras · completada"],[],"Resultado final: 15 horas"]]},"contarProfesoresRec":{"title":"contarProfesoresDestacadosRec()","source":"ListaProfesores.java · contarProfesoresDestacados() y contarProfesoresDestacadosRec()","description":"Cuenta cuántos profesores de la lista cumplen la condición de destacados. El método público inicia el recorrido en cabeza; el auxiliar recursivo aporta 1 o 0 por cada profesor y suma el resultado de los nodos restantes.","reuse":"La condición se consulta mediante Profesor.esDestacado(), que devuelve getTotalHoras() > 120. En ListaDepartamentos existe otro recorrido recursivo que suma el conteo de cada departamento.","nodes":[["Ana · destacada","Profesor"],["Bruno · no","Profesor"],["Carla · destacada","Profesor"],["Diego · no","Profesor"]],"code":["public int contarProfesoresDestacados() {","    return contarProfesoresDestacadosRec(cabeza);","}","","private int contarProfesoresDestacadosRec(NodoProfesor nodo) {","    if (nodo == null) {","        return 0;","    }","","    int contador = 0;","","    if (nodo.getDato().esDestacado()) {","        contador = 1;","    }","","    return contador + contarProfesoresDestacadosRec(nodo.getSiguiente());","}"],"explanations":["Declara el método público que permite solicitar el conteo de profesores destacados desde fuera de ListaProfesores.","Inicia el proceso llamando al auxiliar recursivo y pasando cabeza, es decir, la referencia al primer NodoProfesor. El valor que devuelva será el total.","Cierra el método público. La lógica del recorrido recursivo está en el auxiliar.","Separación visual entre el método de entrada y el método auxiliar.","Declara el método privado recursivo. Recibe el nodo que corresponde evaluar en esta llamada y devuelve cuántos destacados hay desde ese nodo hasta el final.","Caso base: cuando nodo es null significa que ya se recorrieron todos los profesores.","Devuelve 0 porque desde una referencia null no hay ningún profesor que pueda contarse. Este retorno detiene nuevas llamadas.","Cierra el bloque del caso base.","Separación visual.","Inicializa en cero el aporte del profesor actual. Cada llamada tiene su propia variable contador.","Separación visual.","Consulta si el Profesor guardado en el nodo actual es destacado. En Profesor.java, esDestacado() comprueba si getTotalHoras() > 120.","Si el profesor cumple la condición, esta llamada aporta exactamente 1 al conteo.","Cierra la condición. Si no era destacado, contador permanece en 0.","Separación visual entre el cálculo local y la suma recursiva.","Suma el aporte local (0 o 1) al resultado de procesar recursivamente el siguiente nodo. Cuando la llamada siguiente llega a null, devuelve 0 y las sumas se resuelven al regresar.","Termina el método auxiliar recursivo."],"steps":[[0,"Se invoca contarProfesoresDestacados(). Entramos en el método público que inicia el conteo de la lista.",["Ana · destacada","Bruno · no","Carla · destacada","Diego · no"],[],"Inicio del conteo"],[1,"El conteo comienza en Ana.",["Ana · destacada","Bruno · no","Carla · destacada","Diego · no"],["nodo=Ana"],"Contador pendiente"],[11,"Ana es destacada, por lo que su contador local pasa a 1.",["Ana · destacada","Bruno · no","Carla · destacada","Diego · no"],["Ana · aporta 1"],"Aporte local: 1"],[15,"Se suma el aporte de Ana al resultado recursivo de Bruno.",["Ana · destacada","Bruno · no","Carla · destacada","Diego · no"],["Ana · espera retorno","Bruno · nodo actual"],"Descendiendo"],[11,"Bruno no es destacado; su aporte local permanece en 0.",["Ana · destacada","Bruno · no","Carla · destacada","Diego · no"],["Ana · espera","Bruno · aporta 0"],"Aporte local: 0"],[15,"La siguiente llamada evalúa a Carla.",["Ana · destacada","Bruno · no","Carla · destacada","Diego · no"],["Ana · espera","Bruno · espera","Carla · nodo actual"],"Descendiendo"],[11,"Carla sí es destacada y aporta 1.",["Ana · destacada","Bruno · no","Carla · destacada","Diego · no"],["Ana · espera","Bruno · espera","Carla · aporta 1"],"Aporte local: 1"],[15,"Se continúa con Diego.",["Ana · destacada","Bruno · no","Carla · destacada","Diego · no"],["Ana · espera","Bruno · espera","Carla · espera","Diego · nodo actual"],"Descendiendo"],[11,"Diego no es destacado; aporta 0.",["Ana · destacada","Bruno · no","Carla · destacada","Diego · no"],["Ana · espera","Bruno · espera","Carla · espera","Diego · aporta 0"],"Aporte local: 0"],[15,"La llamada siguiente recibe null y alcanzará el caso base.",["Ana · destacada","Bruno · no","Carla · destacada","Diego · no"],["Ana · espera","Bruno · espera","Carla · espera","Diego · espera","null"],"Última llamada"],[5,"No existe otro profesor. La llamada devuelve 0.",["Ana · destacada","Bruno · no","Carla · destacada","Diego · no"],["Ana · espera","Bruno · espera","Carla · espera","Diego · retorno"],"Retorna 0"],[15,"Diego devuelve 0 + 0 = 0.",["Ana · destacada","Bruno · no","Carla · destacada","Diego · completado"],["Ana · espera","Bruno · espera","Carla · espera"],"Retorna 0"],[15,"Carla devuelve 1 + 0 = 1.",["Ana · destacada","Bruno · no","Carla · completada","Diego · completado"],["Ana · espera","Bruno · espera"],"Retorna 1"],[15,"Bruno devuelve 0 + 1 = 1.",["Ana · destacada","Bruno · completado","Carla · completada","Diego · completado"],["Ana · espera"],"Retorna 1"],[15,"Ana devuelve 1 + 1 = 2. Hay dos profesores destacados.",["Ana · completada","Bruno · completado","Carla · completada","Diego · completado"],[],"Resultado final: 2"]]},"contarDepartamentosRec":{"title":"Acumulación recursiva por departamento","source":"ListaDepartamentos.java · contarProfesoresDestacados() y contarProfesoresDestacadosRec()","description":"La llamada procesa un departamento y obtiene cuántos profesores destacados contiene. Luego suma ese valor al resultado recursivo de los departamentos siguientes.","reuse":"Este método recorre la lista de departamentos y delega el conteo interno en Departamento.contarProfesoresDestacados().","nodes":[["Ciencias · 2","Departamento"],["Humanidades · 1","Departamento"],["Ingeniería · 3","Departamento"]],"code":["return contarProfesoresDestacadosRec(cabeza);","","private int contarProfesoresDestacadosRec(NodoDepartamento nodo) {","    if (nodo == null) {","        return 0;","    }","","    return nodo.getDato().contarProfesoresDestacados()","        + contarProfesoresDestacadosRec(nodo.getSiguiente());","}"],"explanations":["El método público comienza el cálculo desde el primer departamento.","Separación visual.","Declara el método recursivo que devuelve la suma de destacados de este departamento y de todos los siguientes.","Caso base: null significa que no quedan departamentos.","Devuelve cero para que no se agregue nada al total.","Cierra el caso base.","Separación visual.","Obtiene el número de profesores destacados dentro del departamento actual.","Suma ese subtotal al resultado recursivo de la lista que comienza en el siguiente departamento.","Termina el método."],"steps":[[0,"El cálculo comienza en Ciencias, que aporta 2 profesores destacados.",["Ciencias · 2","Humanidades · 1","Ingeniería · 3"],["nodo=Ciencias"],"Subtotal local: 2"],[7,"Se obtiene el subtotal de Ciencias: 2.",["Ciencias · 2","Humanidades · 1","Ingeniería · 3"],["Ciencias · subtotal=2"],"2 + ..."],[8,"Se llama recursivamente con Humanidades.",["Ciencias · 2","Humanidades · 1","Ingeniería · 3"],["Ciencias · espera","Humanidades · nodo actual"],"Descendiendo"],[7,"Humanidades aporta 1 profesor destacado.",["Ciencias · 2","Humanidades · 1","Ingeniería · 3"],["Ciencias · espera","Humanidades · subtotal=1"],"1 + ..."],[8,"La siguiente llamada procesa Ingeniería.",["Ciencias · 2","Humanidades · 1","Ingeniería · 3"],["Ciencias · espera","Humanidades · espera","Ingeniería · nodo actual"],"Descendiendo"],[7,"Ingeniería aporta 3 profesores destacados.",["Ciencias · 2","Humanidades · 1","Ingeniería · 3"],["Ciencias · espera","Humanidades · espera","Ingeniería · subtotal=3"],"3 + ..."],[8,"La siguiente referencia es null: se alcanza el caso base.",["Ciencias · 2","Humanidades · 1","Ingeniería · 3"],["Ciencias · espera","Humanidades · espera","Ingeniería · espera","null"],"Última llamada"],[4,"El caso base devuelve 0.",["Ciencias · 2","Humanidades · 1","Ingeniería · 3"],["Ciencias · espera","Humanidades · espera","Ingeniería · retorno"],"Retorna 0"],[8,"Ingeniería devuelve 3 + 0 = 3.",["Ciencias · 2","Humanidades · 1","Ingeniería · completado"],["Ciencias · espera","Humanidades · espera"],"Retorna 3"],[8,"Humanidades devuelve 1 + 3 = 4.",["Ciencias · 2","Humanidades · 1","Ingeniería · completado"],["Ciencias · espera"],"Retorna 4"],[8,"Ciencias devuelve 2 + 4 = 6. Ese es el total de profesores destacados.",["Ciencias · 2","Humanidades · 1","Ingeniería · 3"],[],"Resultado final: 6"]]},"listarRec":{"title":"Recorrido y construcción de texto","source":"ListaAsignaturas.java · listar() y listarRec()","description":"La función llega hasta null y luego, al regresar, concatena el texto de cada nodo. La recursividad sirve para recorrer toda la cadena sin un ciclo explícito.","reuse":"El mismo patrón de listarRec aparece en ListaDepartamentos, ListaProfesores, ColaSolicitudes y PilaHistorial, cambiando el tipo de nodo.","nodes":[["Análisis I","Asignatura"],["Física","Asignatura"],["Programación","Asignatura"]],"code":["return listarRec(cabeza).trim();","","private String listarRec(NodoAsignatura nodo) {","    if (nodo == null) {","        return \"\";","    }","","    return nodo.getDato().toString()","        + \"\\n\"","        + listarRec(nodo.getSiguiente());","}"],"explanations":["El método público empieza a construir el texto desde cabeza. trim() elimina espacios o saltos sobrantes en los extremos.","Separación visual.","Declara el auxiliar que devuelve una cadena con la representación de este nodo y todos los siguientes.","Caso base: cuando el nodo es null, no hay más elementos que convertir en texto.","Devuelve una cadena vacía. Así termina la concatenación recursiva.","Cierra el caso base.","Separación visual.","Convierte el dato del nodo actual a texto.","Agrega un salto de línea para separar el elemento actual del siguiente.","Agrega recursivamente el texto de todos los nodos restantes.","Termina el método."],"steps":[[0,"La construcción del texto comienza en Análisis I.",["Análisis I","Física","Programación"],["nodo=Análisis I"],"Texto todavía incompleto"],[7,"Se obtiene la representación textual de Análisis I.",["Análisis I","Física","Programación"],["Análisis I · espera texto siguiente"],"Análisis I"],[9,"La llamada recursiva avanza a Física.",["Análisis I","Física","Programación"],["Análisis I · espera","Física · nodo actual"],"Bajando"],[7,"Se obtiene el texto de Física.",["Análisis I","Física","Programación"],["Análisis I · espera","Física · espera texto siguiente"],"Física"],[9,"La llamada continúa con Programación.",["Análisis I","Física","Programación"],["Análisis I · espera","Física · espera","Programación · nodo actual"],"Bajando"],[7,"Se obtiene la representación textual de Programación.",["Análisis I","Física","Programación"],["Análisis I · espera","Física · espera","Programación · espera texto siguiente"],"Programación"],[9,"La llamada siguiente recibe null.",["Análisis I","Física","Programación"],["Análisis I · espera","Física · espera","Programación · espera","null"],"Última llamada"],[3,"Se alcanza el caso base porque no hay nodo.",["Análisis I","Física","Programación"],["Análisis I · espera","Física · espera","Programación · retorno"],"Caso base"],[4,"Se devuelve la cadena vacía. A partir de aquí se construye el texto al regresar.",["Análisis I","Física","Programación"],["Análisis I · espera","Física · espera"],"Retorna \"\""],[9,"Programación concatena su texto con la cadena vacía y retorna.",["Análisis I","Física","Programación"],["Análisis I · espera","Física · recibe retorno"],"Retorna Programación"],[9,"Física concatena «Física», un salto de línea y el texto de Programación.",["Análisis I","Física","Programación"],["Análisis I · recibe retorno"],"Retorna Física + Programación"],[9,"Análisis I concatena su texto con todo lo que devolvió la llamada siguiente.",["Análisis I","Física","Programación"],[],"Texto completo construido"],[0,"El método público recibe la cadena completa y trim() limpia los extremos.",["Análisis I","Física","Programación"],[],"Resultado: tres líneas de texto"]]}};
+const methodSelect = document.getElementById('method-select');
+const codeDisplay = document.getElementById('code-display');
+const sourceLabel = document.getElementById('source-label');
+const visualNodes = document.getElementById('visual-nodes');
+const callFrames = document.getElementById('call-frames');
+const resultBox = document.getElementById('result-box');
+const guideTitle = document.getElementById('guide-title');
+const guideCounter = document.getElementById('guide-counter');
+const guideCode = document.getElementById('guide-code');
+const guideText = document.getElementById('guide-text');
+const statusMsg = document.getElementById('status-msg');
+const btnStart = document.getElementById('btn-start');
+const btnNext = document.getElementById('btn-next');
+const btnAll = document.getElementById('btn-all');
+const btnReset = document.getElementById('btn-reset');
+let currentMethod = 'insertarOrdenadoRec';
+let currentStep = -1;
+let running = false;
+let lastState = null;
+
+const esc = value => String(value).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;');
+
+
+function highlightJava(text) {
+  const re = /("(?:[^"\\]|\\.)*")|\b(public|private|protected|static|final|class|void|return|if|else|while|for|new|null|true|false|int|boolean|double)\b|\b(String|[A-Z]\w*)\b|\b(\d+)\b|\b([A-Za-z_]\w*)(?=\()/g;
+  let out = '', last = 0, m;
+  while ((m = re.exec(text)) !== null) {
+    out += esc(text.slice(last, m.index));
+    const token = esc(m[0]);
+    if (m[1]) out += '<span class="string">' + token + '</span>';
+    else if (m[2]) out += '<span class="keyword">' + token + '</span>';
+    else if (m[3]) out += '<span class="type">' + token + '</span>';
+    else if (m[4]) out += '<span class="number">' + token + '</span>';
+    else out += '<span class="method">' + token + '</span>';
+    last = m.index + m[0].length;
+  }
+  return out + esc(text.slice(last));
+}
+
+function renderCode() {
+  const m = METHODS[currentMethod];
+  sourceLabel.textContent = m.source;
+  codeDisplay.innerHTML = '';
+  m.code.forEach((line, index) => {
+    const row = document.createElement('div');
+    row.className = 'line';
+    row.id = 'line-' + index;
+    row.innerHTML = `<span class="ln">${index + 1}</span><span class="code">${highlightJava(line || ' ')}</span>`;
+    row.addEventListener('click', () => explainLine(index));
+    codeDisplay.appendChild(row);
+  });
+  guideTitle.textContent = m.title;
+  guideCounter.textContent = 'Vista general';
+  guideCode.hidden = true;
+  guideText.textContent = m.description + ' ' + m.reuse;
+  statusMsg.textContent = 'Haz clic en una línea o pulsa «Iniciar simulación». ' + m.reuse;
+  clearHighlight();
+}
+
+function clearHighlight() {
+  codeDisplay.querySelectorAll('.line').forEach(row => row.classList.remove('active'));
+}
+function highlightLine(index) {
+  clearHighlight();
+  const row = document.getElementById('line-' + index);
+  if (row) {
+    row.classList.add('active');
+    row.scrollIntoView({block:'nearest',behavior:'smooth'});
+  }
+}
+function explainLine(index) {
+  const m = METHODS[currentMethod];
+  highlightLine(index);
+  guideTitle.textContent = 'Línea ' + (index + 1) + ' · ' + m.title;
+  guideCounter.textContent = 'Código ' + (index + 1) + '/' + m.code.length;
+  guideCode.hidden = false;
+  guideCode.textContent = m.code[index] || '(línea en blanco)';
+  guideText.textContent = m.explanations[index] || 'Esta línea forma parte de la estructura del método.';
+  statusMsg.textContent = 'Explicación de la línea ' + (index + 1) + '. Puedes continuar seleccionando otras líneas.';
+}
+
+function renderState(state) {
+  const m = METHODS[currentMethod];
+  const names = state.nodes || m.nodes.map(n => n[0]);
+  const framesForCurrent = state.frames || [];
+  const topFrame = framesForCurrent.length ? framesForCurrent[framesForCurrent.length - 1] : '';
+  const currentMatch = topFrame.match(/nodo=([^ ·]+)/i);
+  const current = state.current || (currentMatch ? currentMatch[1] : (topFrame.split(' ·')[0] || '').replace(/ ·.*/, ''));
+  visualNodes.innerHTML = '';
+  names.forEach((name, index) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'node-wrap';
+    const node = document.createElement('div');
+    node.className = 'node-card' + (current && (name === current || name.startsWith(current + ' ·') || current.startsWith(name.split(' ·')[0])) ? ' current' : '');
+    const type = (m.nodes.find(n => name === n[0] || name.startsWith(n[0] + ' ·')) || [name,'Nodo'])[1];
+    node.innerHTML = `<div class="node-name">${esc(name)}</div><div class="node-type">${esc(type)}</div>`;
+    wrap.appendChild(node);
+    if (index < names.length - 1) {
+      const arrow = document.createElement('span'); arrow.className = 'arrow'; arrow.textContent = '→'; wrap.appendChild(arrow);
+    }
+    visualNodes.appendChild(wrap);
+  });
+  const nullTag = document.createElement('span'); nullTag.className = 'null-label'; nullTag.textContent = '→ null'; visualNodes.appendChild(nullTag);
+  callFrames.innerHTML = '';
+  const frames = state.frames || [];
+  if (!frames.length) {
+    callFrames.innerHTML = '<span class="empty-state">No hay llamadas pendientes.</span>';
+  } else {
+    frames.forEach(frame => {
+      const card = document.createElement('div'); card.className = 'frame'; card.textContent = frame; callFrames.appendChild(card);
+    });
+  }
+  resultBox.textContent = 'Resultado / retorno: ' + (state.result || 'pendiente.');
+}
+
+function renderInitialState() {
+  const m = METHODS[currentMethod];
+  renderState({nodes:m.nodes.map(n=>n[0]),frames:[],result:'pendiente.'});
+}
+
+function changeMethod() {
+  currentMethod = methodSelect.value;
+  currentStep = -1; running = false; lastState = null;
+  renderCode(); renderInitialState();
+  btnNext.disabled = true; btnAll.disabled = true; btnStart.disabled = false;
+}
+
+function applyStep(stepIndex) {
+  const m = METHODS[currentMethod];
+  const step = m.steps[stepIndex];
+  if (!step) return;
+  currentStep = stepIndex;
+  const [line, message, nodes, frames, result] = step;
+  highlightLine(line);
+  guideTitle.textContent = 'Paso ' + (stepIndex + 1) + ' · ' + m.title;
+  guideCounter.textContent = 'Paso ' + (stepIndex + 1) + '/' + m.steps.length;
+  guideCode.hidden = false;
+  guideCode.textContent = m.code[line] || '(línea en blanco)';
+  guideText.textContent = m.explanations[line] || message;
+  statusMsg.textContent = message;
+  renderState({nodes, frames, result});
+  btnNext.disabled = stepIndex >= m.steps.length - 1;
+  btnAll.disabled = stepIndex >= m.steps.length - 1;
+}
+
+function startSimulation() {
+  currentStep = -1; running = true; btnStart.disabled = true;
+  btnNext.disabled = false; btnAll.disabled = false;
+  applyStep(0);
+}
+function nextStep() {
+  if (!running) return;
+  const m = METHODS[currentMethod];
+  if (currentStep < m.steps.length - 1) applyStep(currentStep + 1);
+  if (currentStep >= m.steps.length - 1) finishSimulation();
+}
+function runAll() {
+  if (!running) startSimulation();
+  const m = METHODS[currentMethod];
+  applyStep(m.steps.length - 1);
+  finishSimulation();
+}
+function finishSimulation() {
+  running = false; btnStart.disabled = false; btnNext.disabled = true; btnAll.disabled = true;
+  statusMsg.textContent += ' · Simulación terminada. Pulsa «Reiniciar ejemplo» para repetirla.';
+}
+function resetExample() {
+  currentStep = -1; running = false; renderInitialState(); renderCode();
+  btnStart.disabled = false; btnNext.disabled = true; btnAll.disabled = true;
+}
+
+Object.entries(METHODS).forEach(([key, method]) => {
+  const option = document.createElement('option'); option.value = key; option.textContent = method.title + ' — ' + method.source.split(' · ')[0]; methodSelect.appendChild(option);
+});
+methodSelect.value = currentMethod;
+methodSelect.addEventListener('change', changeMethod);
+btnStart.addEventListener('click', startSimulation);
+btnNext.addEventListener('click', nextStep);
+btnAll.addEventListener('click', runAll);
+btnReset.addEventListener('click', resetExample);
+renderCode(); renderInitialState();
+
+/* ================== Zoom independiente y pantalla completa ================== */
+const ZOOM_MIN = 0.6, ZOOM_MAX = 2.0, ZOOM_STEP = 0.1;
+const zoomState = { code: 1, visual: 1 };
+
+function changeZoom(target, direction) {
+  const next = Math.round((zoomState[target] + direction * ZOOM_STEP) * 100) / 100;
+  zoomState[target] = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, next));
+  applyZoom();
+}
+
+function applyZoom() {
+  const root = document.documentElement.style;
+  root.setProperty('--code-zoom', zoomState.code);
+  root.setProperty('--visual-zoom', zoomState.visual);
+  ['code', 'visual'].forEach(target => {
+    document.getElementById(target + '-zoom-label').textContent = Math.round(zoomState[target] * 100) + '%';
+    document.getElementById(target + '-minus').disabled = zoomState[target] <= ZOOM_MIN + 0.001;
+    document.getElementById(target + '-plus').disabled = zoomState[target] >= ZOOM_MAX - 0.001;
+  });
+}
+
+function toggleFullscreen() {
+  const doc = document;
+  const el = doc.documentElement;
+  const active = doc.fullscreenElement || doc.webkitFullscreenElement;
+  try {
+    if (!active) {
+      const req = el.requestFullscreen || el.webkitRequestFullscreen;
+      if (req) req.call(el);
+    } else {
+      const exit = doc.exitFullscreen || doc.webkitExitFullscreen;
+      if (exit) exit.call(doc);
+    }
+  } catch (err) { /* el navegador puede bloquear la pantalla completa */ }
+}
+
+function syncFullscreenState() {
+  const active = !!(document.fullscreenElement || document.webkitFullscreenElement);
+  document.body.classList.toggle('is-fullscreen', active);
+  const btn = document.getElementById('btn-fullscreen');
+  btn.textContent = active ? '🗗' : '⛶';
+  btn.title = active ? 'Salir de pantalla completa' : 'Pantalla completa';
+}
+document.addEventListener('fullscreenchange', syncFullscreenState);
+document.addEventListener('webkitfullscreenchange', syncFullscreenState);
+applyZoom();
+</script>
+</body>
+</html>

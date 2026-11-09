@@ -1,0 +1,1599 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guía interactiva: Multilista línea por línea</title>
+    <style>
+        :root {
+            --bg-color: #f8f9fa;
+            --code-bg: #282c34;
+            --code-text: #abb2bf;
+            --highlight-bg: #3e4451;
+            --ext-node-bg: #e8f4f8;
+            --ext-node-border: #2980b9;
+            --int-node-bg: #fcf3cf;
+            --int-node-border: #f39c12;
+            --text-color: #2c3e50;
+            --pointer-color: #e74c3c;
+            --temp-color: #8e44ad;
+            --prev-color: #16a085;
+            --new-color: #d35400;
+            --head-color: #2980b9;
+            --arrow-color: #7f8c8d;
+            --node-w: 160px;
+            --tag-w: 130px;
+            --code-zoom: 1;
+            --visual-zoom: 1;
+            --col-gap: 12px;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            gap: 20px;
+            min-height: 100vh;
+            color: var(--text-color);
+        }
+        .panel {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+            padding: 20px;
+            height: calc(100vh - 40px);
+            min-height: 0;
+            overflow-y: auto;
+        }
+
+        /* ---------- Panel de código ---------- */
+        .code-panel {
+            width: 46%;
+            background-color: var(--code-bg);
+            color: var(--code-text);
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: calc(13.5px * var(--code-zoom));
+            line-height: 1.45;
+            display: flex;
+            flex-direction: column;
+        }
+        .code-header {
+            color: #61afef;
+            margin-bottom: 15px;
+            font-weight: bold;
+            border-bottom: 1px solid #3e4451;
+            padding-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .code-body { margin: 0; }
+        .line {
+            display: flex;
+            align-items: flex-start;
+            padding: 1px 6px 1px 0;
+            border-radius: 4px;
+            border-left: 3px solid transparent;
+            transition: background-color 0.2s;
+        }
+        .line .ln {
+            flex: 0 0 2.4em;
+            text-align: right;
+            padding-right: .7em;
+            color: #636b78;
+            user-select: none;
+        }
+        .line .code {
+            flex: 1;
+            min-width: 0;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+        }
+        .line.active {
+            background-color: var(--highlight-bg);
+            border-left-color: #61afef;
+            color: #fff;
+        }
+        .line.active .ln { color: #61afef; }
+        .keyword { color: #c678dd; }
+        .type { color: #e5c07b; }
+        .method { color: #61afef; }
+        .string { color: #98c379; }
+
+        /* ---------- Panel visual ---------- */
+        .visual-panel {
+            width: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+        }
+        .visual-header {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #2c3e50;
+            text-align: center;
+        }
+
+        .multilist-container {
+            padding: 20px;
+            background: #f1f2f6;
+            border-radius: 12px;
+            border: 2px dashed #bdc3c7;
+            min-height: 330px;
+            max-height: 560px;
+            width: 100%;
+            overflow: auto;
+        }
+        .multilist-inner {
+            display: flex;
+            flex-direction: row;
+            align-items: flex-start;
+            gap: var(--col-gap);
+            width: max-content;
+            min-width: 100%;
+            min-height: 290px;
+            zoom: var(--visual-zoom);
+        }
+        .empty-msg {
+            color: #95a5a6;
+            align-self: center;
+            padding: 0 10px;
+            white-space: nowrap;
+        }
+
+        .ext-col {
+            display: flex;
+            flex-direction: column;
+            width: calc(var(--node-w) + var(--tag-w));
+            flex-shrink: 0;
+        }
+        .ext-col.detached { opacity: 0.6; }
+
+        /* fila reservada para los punteros del nodo externo */
+        .tag-row {
+            width: 100%;
+            height: 66px;
+            display: flex;
+            flex-wrap: wrap;
+            align-content: flex-end;
+            gap: 3px 4px;
+            padding-bottom: 4px;
+        }
+        .ext-holder {
+            position: relative;
+            width: var(--node-w);
+        }
+
+        .node {
+            display: flex;
+            width: var(--node-w);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        .node-ext {
+            border: 3px solid var(--ext-node-border);
+            background-color: var(--ext-node-bg);
+        }
+        .node-int {
+            border: 3px solid var(--int-node-border);
+            background-color: var(--int-node-bg);
+        }
+        .node.pending, .node.removed { border-style: dashed; }
+        .node.pending { border-color: var(--new-color); }
+        .node.removed { border-color: var(--pointer-color); }
+
+        .node-data {
+            flex: 1;
+            min-width: 0;
+            padding: 10px 6px;
+            font-weight: bold;
+            font-size: 0.95rem;
+            border-right: 2px solid;
+            text-align: center;
+            overflow-wrap: anywhere;
+        }
+        .node-ext .node-data { border-color: var(--ext-node-border); }
+        .node-int .node-data { border-color: var(--int-node-border); }
+        .node-pointer {
+            flex: 0 0 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .node-ext .node-pointer { background-color: #d1e8f0; }
+        .node-int .node-pointer { background-color: #fdf2e9; }
+        .dot {
+            width: 8px;
+            height: 8px;
+            background-color: #333;
+            border-radius: 50%;
+        }
+
+        /* flecha horizontal (lista externa) */
+        .arrow-horizontal {
+            position: absolute;
+            top: 50%;
+            left: 100%;
+            transform: translateY(-50%);
+            width: calc(var(--tag-w) + var(--col-gap));
+            height: 2px;
+            background-color: var(--arrow-color);
+            z-index: 5;
+        }
+        .arrow-horizontal::after {
+            content: '';
+            position: absolute;
+            right: -1px;
+            top: -4px;
+            border-top: 5px solid transparent;
+            border-bottom: 5px solid transparent;
+            border-left: 6px solid var(--arrow-color);
+        }
+
+        /* sublista interna */
+        .int-list { display: flex; flex-direction: column; }
+        .int-row {
+            display: flex;
+            align-items: center;
+            min-height: 46px;
+        }
+        .int-row.detached-row { margin-top: 12px; }
+        .int-tags {
+            width: var(--tag-w);
+            padding-left: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+        .arrow-vertical {
+            width: 2px;
+            height: 22px;
+            background-color: var(--arrow-color);
+            position: relative;
+            margin-left: calc(var(--node-w) / 2 - 1px);
+        }
+        .arrow-vertical::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: -4px;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-top: 6px solid var(--arrow-color);
+        }
+
+        /* punteros (etiquetas) */
+        .chip {
+            font-size: 0.66rem;
+            font-weight: 700;
+            line-height: 1.3;
+            padding: 1px 6px;
+            border-radius: 10px;
+            border: 1.5px solid currentColor;
+            background: #fff;
+            white-space: nowrap;
+        }
+        .c-actual { color: var(--pointer-color); }
+        .c-prev { color: var(--prev-color); }
+        .c-temp { color: var(--temp-color); }
+        .c-new { color: var(--new-color); }
+        .c-cabeza { color: var(--head-color); }
+
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px 14px;
+            align-items: center;
+            margin: -5px 0 12px;
+            color: #617080;
+            font-size: 0.78rem;
+        }
+        .legend-item { display: inline-flex; align-items: center; gap: 6px; }
+        .legend-swatch { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
+        .legend-ext { background: var(--ext-node-bg); border: 2px solid var(--ext-node-border); }
+        .legend-int { background: var(--int-node-bg); border: 2px solid var(--int-node-border); }
+        .legend-arrow { width: 19px; height: 2px; background: var(--arrow-color); display: inline-block; position: relative; }
+        .legend-arrow::after { content: ''; position: absolute; right: -1px; top: -3px; border-top: 4px solid transparent; border-bottom: 4px solid transparent; border-left: 5px solid var(--arrow-color); }
+
+        .line-guide {
+            margin-top: 14px;
+            padding: 14px 16px;
+            border: 1px solid #d7e3ef;
+            border-left: 4px solid #3498db;
+            border-radius: 10px;
+            background: #f4f8fc;
+            box-shadow: 0 2px 8px rgba(44, 62, 80, 0.05);
+        }
+        .guide-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+        .guide-kicker { color: #3498db; font-size: 0.68rem; font-weight: 800; letter-spacing: .09em; }
+        .guide-title { margin: 3px 0 0; color: #2c3e50; font-size: 1.02rem; }
+        .guide-counter { flex: 0 0 auto; color: #5d6d7e; background: #e5edf5; border-radius: 20px; padding: 5px 9px; font-size: 0.72rem; font-weight: 700; }
+        .guide-code { display: block; margin-top: 10px; padding: 8px 10px; border-radius: 6px; background: #282c34; color: #98c379; font: 0.82rem/1.45 Consolas, 'Courier New', monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+        .guide-text { margin: 10px 0 0; color: #405366; font-size: 0.9rem; line-height: 1.5; }
+        .guide-hint { margin-top: 9px; color: #6c7a89; font-size: 0.76rem; }
+        .line { cursor: pointer; }
+        .line:not(.active):hover { background: rgba(97, 175, 239, .10); }
+
+        .status-message {
+            margin-top: 12px;
+            font-weight: bold;
+            color: #e67e22;
+            min-height: 48px;
+            text-align: center;
+        }
+
+        /* ---------- Controles ---------- */
+        .controls {
+            margin-top: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            width: 100%;
+            align-items: center;
+        }
+        .control-row {
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+            justify-content: center;
+            width: 100%;
+            flex-wrap: wrap;
+        }
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            font-size: 0.75rem;
+            color: #7f8c8d;
+            font-weight: 600;
+        }
+        select, input {
+            padding: 9px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            max-width: 100%;
+        }
+        input { width: 125px; }
+        select { min-width: 280px; }
+        button {
+            padding: 9px 14px;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+        }
+        button:active { transform: scale(0.98); }
+        .btn-action { background-color: #3498db; color: white; }
+        .btn-action:hover { background-color: #2980b9; }
+        .btn-next { background-color: #2ecc71; color: white; }
+        .btn-next:hover { background-color: #27ae60; }
+        .btn-all { background-color: #8e44ad; color: white; }
+        .btn-all:hover { background-color: #732d91; }
+        .btn-reset { background-color: #95a5a6; color: white; }
+        .btn-reset:hover { background-color: #7f8c8d; }
+        .btn-clear { background-color: #e67e22; color: white; }
+        .btn-clear:hover { background-color: #d35400; }
+        button:disabled { background-color: #bdc3c7; cursor: not-allowed; }
+        select:disabled, input:disabled { background: #f0f0f0; cursor: not-allowed; }
+
+        /* ---------- Consola ---------- */
+        .console-box {
+            margin-top: 18px;
+            background: var(--code-bg);
+            border-radius: 10px;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+        .console-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 12px;
+            background: #21252b;
+            color: #61afef;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+        .console-head button {
+            padding: 2px 10px;
+            font-size: 0.75rem;
+            background: #3e4451;
+            color: #abb2bf;
+        }
+        .console-head button:hover { background: #4b5263; }
+        .console-out {
+            margin: 0;
+            padding: 10px 12px;
+            min-height: 70px;
+            max-height: 130px;
+            overflow-y: auto;
+            color: #98c379;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 0.85rem;
+            line-height: 1.4;
+            white-space: pre-wrap;
+        }
+
+        @media (max-width: 1000px) {
+            body { flex-direction: column; align-items: stretch; }
+            .panel { width: 100% !important; height: auto; }
+            select { min-width: 0; width: 100%; }
+        }
+        @media (max-width: 520px) {
+            .line-guide { padding: 12px; }
+            .guide-head { flex-direction: column; }
+            .guide-counter { align-self: flex-start; }
+        }
+    
+        /* ---------- Herramientas: zoom + pantalla completa ---------- */
+        .tools { display: inline-flex; align-items: center; gap: 4px; flex-wrap: nowrap; }
+        .tools .tool { padding: 3px 9px; font-size: .8rem; line-height: 1.3; border-radius: 5px; border: 0; cursor: pointer; background: #3e4451; color: #e6e9ee; font-weight: bold; min-width: 28px; }
+        .tools .tool:hover:not(:disabled) { background: #566074; }
+        .tools .tool:disabled { opacity: .4; cursor: not-allowed; background: #3e4451; }
+        .tools .zoom-label { font-size: .72rem; min-width: 40px; text-align: center; font-weight: 700; color: inherit; }
+        .tools .tool-title { font-size: .7rem; font-weight: 700; margin-right: 3px; color: inherit; opacity: .8; }
+        .visual-tools { color: #5d6d7e; }
+        .visual-tools .tool { background: #e5edf5; color: #2c3e50; }
+        .visual-tools .tool:hover:not(:disabled) { background: #d2e0ee; }
+        .visual-tools .tool:disabled { background: #e5edf5; }
+        .code-header { font-size: 14px; }
+        .code-header .code-title { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+        .visual-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+        .visual-top .visual-header { margin-bottom: 0; text-align: left; flex: 1 1 auto; }
+
+        /* Evita que los bloques se compriman y se encimen los textos */
+        .code-panel > *, .visual-panel > * { flex-shrink: 0; }
+        .ext-col { min-width: 0; }
+        .int-tags .chip, .tag-row .chip { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+        .guide-text, .status-message { overflow-wrap: anywhere; }
+
+        body.is-fullscreen { padding: 10px; overflow: auto; }
+        body.is-fullscreen .panel { height: calc(100vh - 20px); }
+        @media (max-width: 1000px) { body.is-fullscreen .panel { height: auto; } }
+            .node-data { font-size: .9rem; padding: 10px 4px; overflow-wrap: break-word; hyphens: manual; }
+            .int-tags { align-items: flex-start; }
+    </style>
+</head>
+<body>
+
+    <!-- Panel de Código -->
+    <div class="panel code-panel">
+        <div class="code-header">
+            <div class="code-title">
+                <span>Multilista.java · guía línea por línea</span>
+                <span id="method-title" style="font-size:.9em;color:#e5c07b;"></span>
+            </div>
+            <div class="tools" role="group" aria-label="Tamaño del código">
+                <span class="tool-title">Código</span>
+                <button type="button" class="tool" id="code-minus" onclick="changeZoom('code', -1)" title="Reducir código" aria-label="Reducir tamaño del código">−</button>
+                <span class="zoom-label" id="code-zoom-label">100%</span>
+                <button type="button" class="tool" id="code-plus" onclick="changeZoom('code', 1)" title="Aumentar código" aria-label="Aumentar tamaño del código">+</button>
+            </div>
+        </div>
+        <div class="code-body" id="code-display"></div>
+    </div>
+
+    <!-- Panel Visual -->
+    <div class="panel visual-panel">
+        <div class="visual-top">
+            <div class="visual-header">Estado actual de la Multilista</div>
+            <div class="tools visual-tools" role="group" aria-label="Tamaño de la representación">
+                <span class="tool-title">Visual</span>
+                <button type="button" class="tool" id="visual-minus" onclick="changeZoom('visual', -1)" title="Reducir representación" aria-label="Reducir tamaño de la representación">−</button>
+                <span class="zoom-label" id="visual-zoom-label">100%</span>
+                <button type="button" class="tool" id="visual-plus" onclick="changeZoom('visual', 1)" title="Aumentar representación" aria-label="Aumentar tamaño de la representación">+</button>
+                <button type="button" class="tool" id="btn-fullscreen" onclick="toggleFullscreen()" title="Pantalla completa" aria-label="Pantalla completa">⛶</button>
+            </div>
+        </div>
+        <p style="margin: 0 0 12px; text-align:center; color:#718096; font-size:.78rem;">Se explican únicamente operaciones iterativas sobre nodos externos e internos; no se incluyen métodos de recursividad, cola ni pila.</p>
+        <div class="legend" aria-label="Leyenda de la representación">
+            <span class="legend-item"><i class="legend-swatch legend-ext"></i>Nodo externo</span>
+            <span class="legend-item"><i class="legend-swatch legend-int"></i>Nodo interno</span>
+            <span class="legend-item"><i class="legend-arrow"></i>Enlace siguiente</span>
+        </div>
+
+        <div class="multilist-container"><div class="multilist-inner" id="visual-multilist"></div></div>
+
+        <section class="line-guide" aria-live="polite">
+            <div class="guide-head">
+                <div>
+                    <div class="guide-kicker">EXPLICACIÓN DETALLADA</div>
+                    <h3 class="guide-title" id="guide-title">Propósito del método</h3>
+                </div>
+                <span class="guide-counter" id="guide-counter">Vista general</span>
+            </div>
+            <code class="guide-code" id="guide-code" hidden></code>
+            <p class="guide-text" id="guide-text">Selecciona un método y haz clic sobre cualquiera de sus líneas para conocer qué hace. También puedes iniciar la simulación y avanzar paso a paso.</p>
+            <div class="guide-hint">Consejo: las llaves y las líneas de cierre también se pueden seleccionar, aunque no siempre representan una operación independiente en la simulación.</div>
+        </section>
+
+        <div class="status-message" id="status-msg">Elige un método. Haz clic en una línea para leer su explicación o inicia la simulación.</div>
+
+        <div class="controls">
+            <div class="control-row">
+                <select id="method-select" onchange="changeMethod()">
+                    <option value="agregarNodoExterno">agregarNodoExterno(String dato)</option>
+                    <option value="agregarNodoInterno">agregarNodoInterno(String datoExterno, String datoInterno)</option>
+                    <option value="obtenerListaInterna">obtenerListaInterna(String datoExterno)</option>
+                    <option value="actualizarNodoExterno">actualizarNodoExterno(String datoViejo, String datoNuevo)</option>
+                    <option value="actualizarNodoInterno">actualizarNodoInterno(String datoExterno, String datoViejo, String datoNuevo)</option>
+                    <option value="eliminarNodoExterno">eliminarNodoExterno(String dato)</option>
+                    <option value="eliminarNodoInterno">eliminarNodoInterno(String datoExterno, String datoInterno)</option>
+                    <option value="imprimir">imprimir()</option>
+                </select>
+            </div>
+            <div class="control-row" id="inputs-container"></div>
+            <div class="control-row">
+                <button class="btn-action" id="btn-start" onclick="startSim()">Iniciar Simulación</button>
+                <button class="btn-next" id="btn-next" onclick="nextStep()" disabled>Siguiente Paso</button>
+                <button class="btn-all" id="btn-all" onclick="runAll()" disabled>Ejecutar todo</button>
+            </div>
+            <div class="control-row">
+                <button class="btn-reset" onclick="resetLab()">Reiniciar ejemplo</button>
+                <button class="btn-clear" onclick="emptyList()">Vaciar multilista</button>
+            </div>
+        </div>
+
+        <div class="console-box">
+            <div class="console-head">
+                <span>Consola (System.out)</span>
+                <button onclick="clearConsole()">Limpiar</button>
+            </div>
+            <pre class="console-out" id="console-out"></pre>
+        </div>
+    </div>
+
+<script>
+    // ================== Modelo de datos ==================
+    // La multilista PERSISTE entre ejecuciones de métodos.
+    // Nodos con linked === false están creados pero aún no enlazados.
+    // Nodos con removed === true están desconectados (se descartan al terminar el método).
+    let uidCounter = 1;
+    const uid = () => uidCounter++;
+
+    function sampleData() {
+        const c = name => ({ id: uid(), name });
+        return [
+            { id: uid(), name: 'Juan',  courses: [c('Matemáticas'), c('Física')] },
+            { id: uid(), name: 'María', courses: [c('Química')] },
+            { id: uid(), name: 'Pedro', courses: [c('Historia'), c('Literatura')] }
+        ];
+    }
+    let data = sampleData();
+
+    const isLinked = n => n.linked !== false && !n.removed;
+    const extChain = () => data.filter(isLinked);
+    const intChain = e => e.courses.filter(isLinked);
+
+    // ================== Consola ==================
+    let consoleText = '';
+    const consoleEl = document.getElementById('console-out');
+    function refreshConsole() {
+        consoleEl.textContent = consoleText;
+        consoleEl.scrollTop = consoleEl.scrollHeight;
+    }
+    function print(s) { consoleText += s; refreshConsole(); }
+    function println(s) { consoleText += s + '\n'; refreshConsole(); }
+    function clearConsole() { consoleText = ''; refreshConsole(); }
+
+    // ================== Helpers de pasos ==================
+    const E = (n, label) => n ? { kind: 'ext', id: n.id, label } : null;
+    const I = (n, label) => n ? { kind: 'int', id: n.id, label } : null;
+    function S(line, msg, ptrs = [], apply = null) {
+        return { line, msg, ptrs: ptrs.filter(Boolean), apply };
+    }
+    const fmtList = ic => ic.length ? ic.map(c => c.name).join(' -> ') + ' -> null' : 'null';
+
+    // ================== Métodos: código + plan de pasos ==================
+    const METHODS = {
+
+        agregarNodoExterno: {
+            inputs: ['dato'],
+            code: [
+                'public void agregarNodoExterno(String dato) {',
+                '    NodoExterno nuevoNodo = new NodoExterno(dato);',
+                '    if (cabeza == null) {',
+                '        cabeza = nuevoNodo;',
+                '    } else {',
+                '        NodoExterno actual = cabeza;',
+                '        while (actual.getSiguiente() != null) {',
+                '            actual = actual.getSiguiente();',
+                '        }',
+                '        actual.setSiguiente(nuevoNodo);',
+                '    }',
+                '}'
+            ],
+            plan([dato]) {
+                const st = [];
+                const nuevo = { id: uid(), name: dato, courses: [], linked: false };
+                const N = E(nuevo, 'nuevoNodo');
+                const ch = extChain();
+                st.push(S(1, `Se invoca agregarNodoExterno("${dato}").`));
+                st.push(S(2, `Se crea nuevoNodo con el dato "${dato}". Todavía no está enlazado a la multilista.`, [N], () => data.push(nuevo)));
+                if (ch.length === 0) {
+                    st.push(S(3, 'cabeza == null → true. La multilista está vacía.', [N]));
+                    st.push(S(4, 'cabeza = nuevoNodo. El nuevo nodo pasa a ser la cabeza.', [N], () => { nuevo.linked = true; }));
+                    return st;
+                }
+                st.push(S(3, 'cabeza == null → false. Ya existen nodos externos.', [N]));
+                st.push(S(6, 'actual = cabeza. Nos posicionamos en el primer nodo.', [E(ch[0], 'actual'), N]));
+                let i = 0;
+                while (true) {
+                    const nx = ch[i + 1];
+                    st.push(S(7, `actual.getSiguiente() != null → ${nx ? 'true' : 'false'}.` + (nx ? ' Hay más nodos.' : ' Es el último nodo.'), [E(ch[i], 'actual'), N]));
+                    if (!nx) break;
+                    i++;
+                    st.push(S(8, 'actual = actual.getSiguiente(). Avanzamos un nodo.', [E(ch[i], 'actual'), N]));
+                }
+                st.push(S(10, 'actual.setSiguiente(nuevoNodo). El nuevo nodo queda enlazado al final.', [E(ch[i], 'actual'), N], () => { nuevo.linked = true; }));
+                return st;
+            }
+        },
+
+        agregarNodoInterno: {
+            inputs: ['datoExterno', 'datoInterno'],
+            code: [
+                'public void agregarNodoInterno(String datoExterno, String datoInterno) {',
+                '    NodoExterno actual = cabeza;',
+                '    while (actual != null) {',
+                '        if (actual.getDato().equals(datoExterno)) {',
+                '            NodoInterno nuevoNodo = new NodoInterno(datoInterno);',
+                '            if (actual.getListaInterna() == null) {',
+                '                actual.setListaInterna(nuevoNodo);',
+                '            } else {',
+                '                NodoInterno temp = actual.getListaInterna();',
+                '                while (temp.getSiguiente() != null) {',
+                '                    temp = temp.getSiguiente();',
+                '                }',
+                '                temp.setSiguiente(nuevoNodo);',
+                '            }',
+                '            return;',
+                '        }',
+                '        actual = actual.getSiguiente();',
+                '    }',
+                '    System.out.println("Nodo externo no encontrado.");',
+                '}'
+            ],
+            plan([dExt, dInt]) {
+                const st = [];
+                const ch = extChain();
+                st.push(S(1, `Se invoca agregarNodoInterno("${dExt}", "${dInt}").`));
+                st.push(S(2, 'actual = cabeza.', [E(ch[0], 'actual')]));
+                for (let i = 0; i < ch.length; i++) {
+                    const e = ch[i];
+                    const A = E(e, 'actual');
+                    st.push(S(3, 'actual != null → true.', [A]));
+                    const eq = e.name === dExt;
+                    st.push(S(4, `actual.getDato().equals("${dExt}") → ${eq}. ("${e.name}")`, [A]));
+                    if (eq) {
+                        const nuevo = { id: uid(), name: dInt, linked: false };
+                        const N = I(nuevo, 'nuevoNodo');
+                        const ic = intChain(e);
+                        st.push(S(5, `Se crea nuevoNodo (NodoInterno) con el dato "${dInt}". Aún no está enlazado.`, [A, N], () => e.courses.push(nuevo)));
+                        if (ic.length === 0) {
+                            st.push(S(6, 'actual.getListaInterna() == null → true. El estudiante no tiene cursos.', [A, N]));
+                            st.push(S(7, 'actual.setListaInterna(nuevoNodo). El nuevo curso es el primero de la sublista.', [A, N], () => { nuevo.linked = true; }));
+                        } else {
+                            st.push(S(6, 'actual.getListaInterna() == null → false. Ya tiene cursos.', [A, N]));
+                            st.push(S(9, 'temp = actual.getListaInterna(). Empezamos en el primer curso.', [A, I(ic[0], 'temp'), N]));
+                            let j = 0;
+                            while (true) {
+                                const nx = ic[j + 1];
+                                st.push(S(10, `temp.getSiguiente() != null → ${nx ? 'true' : 'false'}.` + (nx ? '' : ' Es el último curso.'), [A, I(ic[j], 'temp'), N]));
+                                if (!nx) break;
+                                j++;
+                                st.push(S(11, 'temp = temp.getSiguiente().', [A, I(ic[j], 'temp'), N]));
+                            }
+                            st.push(S(13, 'temp.setSiguiente(nuevoNodo). El nuevo curso queda al final de la sublista.', [A, I(ic[j], 'temp'), N], () => { nuevo.linked = true; }));
+                        }
+                        st.push(S(15, 'return; El método termina.', [A]));
+                        return st;
+                    }
+                    const nx = ch[i + 1];
+                    st.push(S(17, 'actual = actual.getSiguiente().', [E(nx, 'actual')]));
+                }
+                st.push(S(3, 'actual != null → false. Se recorrió toda la lista.'));
+                st.push(S(19, 'Nodo externo no encontrado.', [], () => println('Nodo externo no encontrado.')));
+                return st;
+            }
+        },
+
+        obtenerListaInterna: {
+            inputs: ['datoExterno'],
+            code: [
+                'public NodoInterno obtenerListaInterna(String datoExterno) {',
+                '    NodoExterno actual = cabeza;',
+                '    while (actual != null) {',
+                '        if (actual.getDato().equals(datoExterno)) {',
+                '            return actual.getListaInterna();',
+                '        }',
+                '        actual = actual.getSiguiente();',
+                '    }',
+                '    System.out.println("Nodo externo no encontrado.");',
+                '    return null;',
+                '}'
+            ],
+            plan([dExt]) {
+                const st = [];
+                const ch = extChain();
+                st.push(S(1, `Se invoca obtenerListaInterna("${dExt}").`));
+                st.push(S(2, 'actual = cabeza.', [E(ch[0], 'actual')]));
+                for (let i = 0; i < ch.length; i++) {
+                    const e = ch[i];
+                    const A = E(e, 'actual');
+                    st.push(S(3, 'actual != null → true.', [A]));
+                    const eq = e.name === dExt;
+                    st.push(S(4, `actual.getDato().equals("${dExt}") → ${eq}. ("${e.name}")`, [A]));
+                    if (eq) {
+                        const ic = intChain(e);
+                        st.push(S(5, `return actual.getListaInterna(). Retorna: ${fmtList(ic)}`, [A],
+                            () => println(`=> retorna: ${fmtList(ic)}`)));
+                        return st;
+                    }
+                    st.push(S(7, 'actual = actual.getSiguiente().', [E(ch[i + 1], 'actual')]));
+                }
+                st.push(S(3, 'actual != null → false. Se recorrió toda la lista.'));
+                st.push(S(9, 'Nodo externo no encontrado.', [], () => println('Nodo externo no encontrado.')));
+                st.push(S(10, 'return null.', [], () => println('=> retorna: null')));
+                return st;
+            }
+        },
+
+        actualizarNodoExterno: {
+            inputs: ['datoViejo', 'datoNuevo'],
+            code: [
+                'public void actualizarNodoExterno(String datoViejo, String datoNuevo) {',
+                '    NodoExterno actual = cabeza;',
+                '    while (actual != null) {',
+                '        if (actual.getDato().equals(datoViejo)) {',
+                '            actual.setDato(datoNuevo);',
+                '            return;',
+                '        }',
+                '        actual = actual.getSiguiente();',
+                '    }',
+                '    System.out.println("Nodo externo no encontrado.");',
+                '}'
+            ],
+            plan([viejo, nuevo]) {
+                const st = [];
+                const ch = extChain();
+                st.push(S(1, `Se invoca actualizarNodoExterno("${viejo}", "${nuevo}").`));
+                st.push(S(2, 'actual = cabeza.', [E(ch[0], 'actual')]));
+                for (let i = 0; i < ch.length; i++) {
+                    const e = ch[i];
+                    const A = E(e, 'actual');
+                    st.push(S(3, 'actual != null → true.', [A]));
+                    const eq = e.name === viejo;
+                    st.push(S(4, `actual.getDato().equals("${viejo}") → ${eq}. ("${e.name}")`, [A]));
+                    if (eq) {
+                        st.push(S(5, `actual.setDato("${nuevo}"). Se actualiza el dato del nodo externo.`, [A], () => { e.name = nuevo; }));
+                        st.push(S(6, 'return; El método termina.', [A]));
+                        return st;
+                    }
+                    st.push(S(8, 'actual = actual.getSiguiente().', [E(ch[i + 1], 'actual')]));
+                }
+                st.push(S(3, 'actual != null → false. Se recorrió toda la lista.'));
+                st.push(S(10, 'Nodo externo no encontrado.', [], () => println('Nodo externo no encontrado.')));
+                return st;
+            }
+        },
+
+        actualizarNodoInterno: {
+            inputs: ['datoExterno', 'datoViejo', 'datoNuevo'],
+            code: [
+                'public void actualizarNodoInterno(String datoExterno, String datoViejo, String datoNuevo) {',
+                '    NodoExterno actualExterno = cabeza;',
+                '    while (actualExterno != null) {',
+                '        if (actualExterno.getDato().equals(datoExterno)) {',
+                '            NodoInterno actualInterno = actualExterno.getListaInterna();',
+                '            while (actualInterno != null) {',
+                '                if (actualInterno.getDato().equals(datoViejo)) {',
+                '                    actualInterno.setDato(datoNuevo);',
+                '                    return;',
+                '                }',
+                '                actualInterno = actualInterno.getSiguiente();',
+                '            }',
+                '            System.out.println("Nodo interno no encontrado.");',
+                '            return;',
+                '        }',
+                '        actualExterno = actualExterno.getSiguiente();',
+                '    }',
+                '    System.out.println("Nodo externo no encontrado.");',
+                '}'
+            ],
+            plan([dExt, viejo, nuevo]) {
+                const st = [];
+                const ch = extChain();
+                st.push(S(1, `Se invoca actualizarNodoInterno("${dExt}", "${viejo}", "${nuevo}").`));
+                st.push(S(2, 'actualExterno = cabeza.', [E(ch[0], 'actualExterno')]));
+                for (let i = 0; i < ch.length; i++) {
+                    const e = ch[i];
+                    const A = E(e, 'actualExterno');
+                    st.push(S(3, 'actualExterno != null → true.', [A]));
+                    const eq = e.name === dExt;
+                    st.push(S(4, `actualExterno.getDato().equals("${dExt}") → ${eq}. ("${e.name}")`, [A]));
+                    if (eq) {
+                        const ic = intChain(e);
+                        st.push(S(5, 'actualInterno = actualExterno.getListaInterna().' + (ic.length ? '' : ' La sublista está vacía (null).'), [A, I(ic[0], 'actualInterno')]));
+                        for (let j = 0; j < ic.length; j++) {
+                            const c = ic[j];
+                            const C = I(c, 'actualInterno');
+                            st.push(S(6, 'actualInterno != null → true.', [A, C]));
+                            const eqc = c.name === viejo;
+                            st.push(S(7, `actualInterno.getDato().equals("${viejo}") → ${eqc}. ("${c.name}")`, [A, C]));
+                            if (eqc) {
+                                st.push(S(8, `actualInterno.setDato("${nuevo}"). Se actualiza el dato del nodo interno.`, [A, C], () => { c.name = nuevo; }));
+                                st.push(S(9, 'return; El método termina.', [A, C]));
+                                return st;
+                            }
+                            st.push(S(11, 'actualInterno = actualInterno.getSiguiente().', [A, I(ic[j + 1], 'actualInterno')]));
+                        }
+                        st.push(S(6, 'actualInterno != null → false. Se recorrió toda la sublista.', [A]));
+                        st.push(S(13, 'Nodo interno no encontrado.', [A], () => println('Nodo interno no encontrado.')));
+                        st.push(S(14, 'return; El método termina.', [A]));
+                        return st;
+                    }
+                    st.push(S(16, 'actualExterno = actualExterno.getSiguiente().', [E(ch[i + 1], 'actualExterno')]));
+                }
+                st.push(S(3, 'actualExterno != null → false. Se recorrió toda la lista.'));
+                st.push(S(18, 'Nodo externo no encontrado.', [], () => println('Nodo externo no encontrado.')));
+                return st;
+            }
+        },
+
+        eliminarNodoExterno: {
+            inputs: ['dato'],
+            code: [
+                'public void eliminarNodoExterno(String dato) {',
+                '    if (cabeza == null) {',
+                '        System.out.println("La multilista está vacía.");',
+                '        return;',
+                '    }',
+                '    if (cabeza.getDato().equals(dato)) {',
+                '        cabeza = cabeza.getSiguiente();',
+                '        return;',
+                '    }',
+                '    NodoExterno actual = cabeza;',
+                '    while (actual.getSiguiente() != null) {',
+                '        if (actual.getSiguiente().getDato().equals(dato)) {',
+                '            actual.setSiguiente(actual.getSiguiente().getSiguiente());',
+                '            return;',
+                '        }',
+                '        actual = actual.getSiguiente();',
+                '    }',
+                '    System.out.println("Nodo externo no encontrado.");',
+                '}'
+            ],
+            plan([dato]) {
+                const st = [];
+                const ch = extChain();
+                st.push(S(1, `Se invoca eliminarNodoExterno("${dato}").`));
+                if (ch.length === 0) {
+                    st.push(S(2, 'cabeza == null → true. La multilista está vacía.'));
+                    st.push(S(3, 'La multilista está vacía.', [], () => println('La multilista está vacía.')));
+                    st.push(S(4, 'return; El método termina.'));
+                    return st;
+                }
+                st.push(S(2, 'cabeza == null → false.'));
+                const eqHead = ch[0].name === dato;
+                st.push(S(6, `cabeza.getDato().equals("${dato}") → ${eqHead}. ("${ch[0].name}")`, [E(ch[0], 'actual')].slice(0, 0)));
+                if (eqHead) {
+                    st.push(S(7, 'cabeza = cabeza.getSiguiente(). El primer nodo se desconecta; la cabeza avanza.', [], () => { ch[0].removed = true; }));
+                    st.push(S(8, 'return; El método termina.'));
+                    return st;
+                }
+                st.push(S(10, 'actual = cabeza.', [E(ch[0], 'actual')]));
+                for (let i = 0; i + 1 < ch.length; i++) {
+                    const A = E(ch[i], 'actual');
+                    st.push(S(11, 'actual.getSiguiente() != null → true.', [A]));
+                    const nx = ch[i + 1];
+                    const eq = nx.name === dato;
+                    st.push(S(12, `actual.getSiguiente().getDato().equals("${dato}") → ${eq}. ("${nx.name}")`, [A]));
+                    if (eq) {
+                        st.push(S(13, 'actual.setSiguiente(actual.getSiguiente().getSiguiente()). El nodo se salta y queda desconectado.', [A], () => { nx.removed = true; }));
+                        st.push(S(14, 'return; El método termina.', [A]));
+                        return st;
+                    }
+                    st.push(S(16, 'actual = actual.getSiguiente().', [E(nx, 'actual')]));
+                }
+                st.push(S(11, 'actual.getSiguiente() != null → false. Se llegó al final.', [E(ch[ch.length - 1], 'actual')]));
+                st.push(S(17, 'Nodo externo no encontrado.', [], () => println('Nodo externo no encontrado.')));
+                return st;
+            }
+        },
+
+        eliminarNodoInterno: {
+            inputs: ['datoExterno', 'datoInterno'],
+            code: [
+                'public void eliminarNodoInterno(String datoExterno, String datoInterno) {',
+                '    NodoExterno actualExterno = cabeza;',
+                '    while (actualExterno != null) {',
+                '        if (actualExterno.getDato().equals(datoExterno)) {',
+                '            if (actualExterno.getListaInterna() == null) {',
+                '                System.out.println("La lista interna está vacía.");',
+                '                return;',
+                '            }',
+                '            if (actualExterno.getListaInterna().getDato().equals(datoInterno)) {',
+                '                actualExterno.setListaInterna(actualExterno.getListaInterna().getSiguiente());',
+                '                return;',
+                '            }',
+                '            NodoInterno actualInterno = actualExterno.getListaInterna();',
+                '            while (actualInterno.getSiguiente() != null) {',
+                '                if (actualInterno.getSiguiente().getDato().equals(datoInterno)) {',
+                '                    actualInterno.setSiguiente(actualInterno.getSiguiente().getSiguiente());',
+                '                    return;',
+                '                }',
+                '                actualInterno = actualInterno.getSiguiente();',
+                '            }',
+                '            System.out.println("Nodo interno no encontrado.");',
+                '            return;',
+                '        }',
+                '        actualExterno = actualExterno.getSiguiente();',
+                '    }',
+                '    System.out.println("Nodo externo no encontrado.");',
+                '}'
+            ],
+            plan([dExt, dInt]) {
+                const st = [];
+                const ch = extChain();
+                st.push(S(1, `Se invoca eliminarNodoInterno("${dExt}", "${dInt}").`));
+                st.push(S(2, 'actualExterno = cabeza.', [E(ch[0], 'actualExterno')]));
+                for (let i = 0; i < ch.length; i++) {
+                    const e = ch[i];
+                    const A = E(e, 'actualExterno');
+                    st.push(S(3, 'actualExterno != null → true.', [A]));
+                    const eq = e.name === dExt;
+                    st.push(S(4, `actualExterno.getDato().equals("${dExt}") → ${eq}. ("${e.name}")`, [A]));
+                    if (eq) {
+                        const ic = intChain(e);
+                        if (ic.length === 0) {
+                            st.push(S(5, 'actualExterno.getListaInterna() == null → true.', [A]));
+                            st.push(S(6, 'La lista interna está vacía.', [A], () => println('La lista interna está vacía.')));
+                            st.push(S(7, 'return; El método termina.', [A]));
+                            return st;
+                        }
+                        st.push(S(5, 'actualExterno.getListaInterna() == null → false.', [A]));
+                        const eqFirst = ic[0].name === dInt;
+                        st.push(S(8, `getListaInterna().getDato().equals("${dInt}") → ${eqFirst}. ("${ic[0].name}")`, [A]));
+                        if (eqFirst) {
+                            st.push(S(9, 'actualExterno.setListaInterna(...getSiguiente()). El primer curso se desconecta.', [A], () => { ic[0].removed = true; }));
+                            st.push(S(10, 'return; El método termina.', [A]));
+                            return st;
+                        }
+                        st.push(S(12, 'actualInterno = actualExterno.getListaInterna().', [A, I(ic[0], 'actualInterno')]));
+                        for (let j = 0; j + 1 < ic.length; j++) {
+                            const C = I(ic[j], 'actualInterno');
+                            const nx = ic[j + 1];
+                            st.push(S(13, 'actualInterno.getSiguiente() != null → true.', [A, C]));
+                            const eqn = nx.name === dInt;
+                            st.push(S(14, `actualInterno.getSiguiente().getDato().equals("${dInt}") → ${eqn}. ("${nx.name}")`, [A, C]));
+                            if (eqn) {
+                                st.push(S(15, 'actualInterno.setSiguiente(...getSiguiente().getSiguiente()). El curso se salta y queda desconectado.', [A, C], () => { nx.removed = true; }));
+                                st.push(S(16, 'return; El método termina.', [A, C]));
+                                return st;
+                            }
+                            st.push(S(18, 'actualInterno = actualInterno.getSiguiente().', [A, I(nx, 'actualInterno')]));
+                        }
+                        st.push(S(13, 'actualInterno.getSiguiente() != null → false. Se llegó al final de la sublista.', [A, I(ic[ic.length - 1], 'actualInterno')]));
+                        st.push(S(20, 'Nodo interno no encontrado.', [A], () => println('Nodo interno no encontrado.')));
+                        st.push(S(21, 'return; El método termina.', [A]));
+                        return st;
+                    }
+                    st.push(S(23, 'actualExterno = actualExterno.getSiguiente().', [E(ch[i + 1], 'actualExterno')]));
+                }
+                st.push(S(3, 'actualExterno != null → false. Se recorrió toda la lista.'));
+                st.push(S(25, 'Nodo externo no encontrado.', [], () => println('Nodo externo no encontrado.')));
+                return st;
+            }
+        },
+
+        imprimir: {
+            inputs: [],
+            code: [
+                'public void imprimir() {',
+                '    NodoExterno actualExterno = cabeza;',
+                '    while (actualExterno != null) {',
+                '        System.out.print(actualExterno.getDato() + ": ");',
+                '        NodoInterno actualInterno = actualExterno.getListaInterna();',
+                '        while (actualInterno != null) {',
+                '            System.out.print(actualInterno.getDato() + " -> ");',
+                '            actualInterno = actualInterno.getSiguiente();',
+                '        }',
+                '        System.out.println("");',
+                '        actualExterno = actualExterno.getSiguiente();',
+                '    }',
+                '}'
+            ],
+            plan() {
+                const st = [];
+                const ch = extChain();
+                st.push(S(1, 'Se invoca imprimir().'));
+                st.push(S(2, 'actualExterno = cabeza.', [E(ch[0], 'actualExterno')]));
+                for (let i = 0; i < ch.length; i++) {
+                    const e = ch[i];
+                    const A = E(e, 'actualExterno');
+                    const ic = intChain(e);
+                    st.push(S(3, 'actualExterno != null → true.', [A]));
+                    st.push(S(4, `Se imprime "${e.name}: " sin salto de línea.`, [A], () => print(e.name + ': ')));
+                    st.push(S(5, 'actualInterno = actualExterno.getListaInterna().', [A, I(ic[0], 'actualInterno')]));
+                    for (let j = 0; j < ic.length; j++) {
+                        const C = I(ic[j], 'actualInterno');
+                        st.push(S(6, 'actualInterno != null → true.', [A, C]));
+                        st.push(S(7, `Se imprime "${ic[j].name} -> ".`, [A, C], () => print(ic[j].name + ' -> ')));
+                        st.push(S(8, 'actualInterno = actualInterno.getSiguiente().', [A, I(ic[j + 1], 'actualInterno')]));
+                    }
+                    st.push(S(6, 'actualInterno != null → false. Fin de la sublista.', [A]));
+                    st.push(S(10, 'Se imprime un salto de línea.', [A], () => println('')));
+                    st.push(S(11, 'actualExterno = actualExterno.getSiguiente().', [E(ch[i + 1], 'actualExterno')]));
+                }
+                st.push(S(3, 'actualExterno != null → false. Se recorrió toda la multilista.'));
+                return st;
+            }
+        }
+    };
+
+    // ================== Guía didáctica línea por línea ==================
+    const LINE_GUIDE = {
+        "agregarNodoExterno": {
+                "summary": "Agrega un nodo a la lista externa. Si cabeza es null, el nuevo nodo será el primero; de lo contrario, recorre los nodos externos hasta encontrar el último y enlaza allí el nodo nuevo.",
+                "lines": [
+                        "Declara un método público que no devuelve un valor (void). Recibe en dato la información que almacenará el nuevo nodo externo.",
+                        "Construye un NodoExterno con el contenido recibido. El constructor crea el nodo; su enlace siguiente queda inicialmente en null.",
+                        "Comprueba si cabeza no apunta a ningún nodo. cabeza == null significa que todavía no existe ningún nodo externo.",
+                        "Como la lista está vacía, cabeza pasa a apuntar al nodo recién creado. Así se establece el primer elemento de la lista externa.",
+                        "Inicia la alternativa para el caso contrario: cabeza ya apunta a un nodo y, por tanto, hay que buscar el final de la lista.",
+                        "Declara el cursor actual y lo coloca en el primer nodo externo. No copia el nodo: actual es otra referencia al mismo objeto.",
+                        "Mientras el enlace siguiente de actual no sea null, todavía existe otro nodo externo después del actual y se debe continuar recorriendo.",
+                        "Avanza el cursor actual al siguiente nodo. En cada repetición se aproxima al final de la lista externa.",
+                        "Cierra el bloque while. Se llega aquí cuando actual es el último nodo, es decir, cuando su siguiente vale null.",
+                        "Cambia el enlace siguiente del último nodo para que apunte a nuevoNodo. Con esta asignación el nuevo nodo queda incorporado al final.",
+                        "Cierra el bloque else correspondiente al caso en que la lista ya tenía elementos.",
+                        "Cierra el método. La operación termina sin devolver un valor."
+                ]
+        },
+        "agregarNodoInterno": {
+                "summary": "Busca primero el nodo externo identificado por datoExterno. Cuando lo encuentra, agrega datoInterno al final de la sublista asociada a ese nodo; si la sublista está vacía, el nuevo nodo será su primer elemento.",
+                "lines": [
+                        "Declara un método público sin valor de retorno. Recibe el dato del nodo externo que contiene la sublista y el dato que se desea agregar dentro de ella.",
+                        "Inicializa actual en cabeza para comenzar la búsqueda desde el primer nodo de la lista externa.",
+                        "Recorre la lista externa mientras actual no sea null. La condición evita intentar leer un nodo cuando ya se llegó al final.",
+                        "Compara el dato almacenado en el nodo externo actual con datoExterno. equals compara el contenido de las cadenas, no sus referencias.",
+                        "Crea el NodoInterno que almacenará datoInterno. Todavía falta enlazarlo a la sublista del nodo externo encontrado.",
+                        "Comprueba si el nodo externo no tiene primer nodo interno: getListaInterna() devuelve null cuando la sublista está vacía.",
+                        "Asigna el nodo nuevo como inicio de la sublista interna. Se ejecuta cuando ese nodo externo todavía no tenía elementos internos.",
+                        "Abre la alternativa: la sublista sí contiene al menos un nodo y el nuevo elemento debe añadirse al final.",
+                        "Inicializa temp con el primer nodo interno. Este cursor se usará para recorrer únicamente la sublista del nodo externo encontrado.",
+                        "Mientras temp tenga un siguiente nodo, aún no se ha alcanzado el último nodo interno.",
+                        "Avanza temp al nodo interno siguiente para continuar la búsqueda del final de la sublista.",
+                        "Cierra el while interno. Al salir, temp referencia el último nodo de la sublista.",
+                        "Enlaza el último nodo interno con nuevoNodo. Así se incorpora el nuevo elemento sin modificar la lista externa.",
+                        "Cierra el bloque else de la sublista que ya tenía elementos.",
+                        "Termina el método inmediatamente. El nodo externo fue encontrado y el nodo interno ya quedó agregado.",
+                        "Cierra el if que comprobó si el dato externo coincidía.",
+                        "Si el nodo actual no coincidió, avanza actual al siguiente nodo externo para seguir buscando.",
+                        "Cierra el recorrido externo. Se alcanza si ya no quedan nodos por revisar.",
+                        "Informa que no se encontró el nodo externo solicitado. En este caso no se agregó ningún nodo interno.",
+                        "Cierra el método."
+                ]
+        },
+        "obtenerListaInterna": {
+                "summary": "Localiza un nodo externo por su dato y devuelve la referencia al primer nodo de su sublista interna. Si el nodo externo no existe, informa el problema y devuelve null.",
+                "lines": [
+                        "Declara un método público cuyo resultado es una referencia NodoInterno. El parámetro identifica qué nodo externo contiene la sublista que se desea obtener.",
+                        "Coloca el cursor actual en cabeza para iniciar la búsqueda por la lista externa.",
+                        "Repite el recorrido mientras actual apunte a un nodo externo válido.",
+                        "Comprueba si el dato del nodo externo actual coincide con datoExterno.",
+                        "Devuelve la referencia al primer nodo de la lista interna del nodo externo encontrado. Si ese nodo externo no tiene elementos internos, la referencia devuelta será null.",
+                        "Cierra el bloque if. Si hubo coincidencia, el return ya terminó el método; si no, se continúa el recorrido.",
+                        "Avanza actual al siguiente nodo externo para revisar el próximo elemento.",
+                        "Cierra el while. Se llega aquí cuando se recorrió toda la lista externa sin encontrar el dato.",
+                        "Muestra un mensaje indicando que no existe el nodo externo solicitado.",
+                        "Devuelve null para señalar que no se obtuvo una sublista porque el nodo externo no fue encontrado.",
+                        "Cierra el método."
+                ]
+        },
+        "actualizarNodoExterno": {
+                "summary": "Busca un nodo en la lista externa cuyo dato coincida con datoViejo. Cuando lo encuentra, reemplaza ese contenido por datoNuevo y finaliza.",
+                "lines": [
+                        "Declara un método público sin retorno. Recibe el contenido que se buscará y el nuevo contenido que lo sustituirá.",
+                        "Inicia el cursor actual en cabeza, el primer nodo de la lista externa.",
+                        "Recorre los nodos externos mientras actual no sea null.",
+                        "Compara el dato del nodo actual con datoViejo para determinar si se encontró el elemento que debe actualizarse.",
+                        "Cambia el campo dato del nodo actual por datoNuevo. Se modifica el contenido del nodo, no su enlace siguiente ni su posición.",
+                        "Finaliza el método en cuanto encuentra y actualiza el nodo. Evita seguir buscando coincidencias posteriores.",
+                        "Cierra el bloque de la condición de coincidencia.",
+                        "Si no hubo coincidencia, avanza actual al siguiente nodo externo.",
+                        "Cierra el while. Si se alcanza, significa que actual llegó a null y no hubo coincidencia.",
+                        "Informa que el nodo externo indicado por datoViejo no fue encontrado.",
+                        "Cierra el método."
+                ]
+        },
+        "actualizarNodoInterno": {
+                "summary": "Realiza una búsqueda en dos niveles: primero localiza el nodo externo y luego recorre su sublista interna. Al encontrar datoViejo dentro de esa sublista, reemplaza su contenido por datoNuevo.",
+                "lines": [
+                        "Declara un método público sin retorno. Recibe el dato del nodo externo que contiene la sublista, el dato interno que se buscará y el nuevo dato interno.",
+                        "Inicializa actualExterno en cabeza para comenzar por el primer nodo de la lista externa.",
+                        "Recorre la lista externa mientras actualExterno apunte a un nodo válido.",
+                        "Comprueba si el nodo externo actual es el que identifica datoExterno.",
+                        "Obtiene el inicio de la sublista del nodo externo encontrado y lo asigna a actualInterno. Si no hay sublista, el cursor será null.",
+                        "Recorre los nodos internos mientras actualInterno no sea null.",
+                        "Compara el dato del nodo interno actual con datoViejo.",
+                        "Reemplaza el dato del nodo interno encontrado por datoNuevo. Los enlaces de la multilista permanecen iguales.",
+                        "Termina el método después de realizar la actualización.",
+                        "Cierra la condición que comprobó si el dato interno coincidía.",
+                        "Si no hubo coincidencia, avanza actualInterno al siguiente nodo de la sublista.",
+                        "Cierra el while interno. Se alcanza cuando la sublista terminó sin encontrar datoViejo.",
+                        "Muestra un mensaje indicando que el dato interno solicitado no existe dentro de la sublista seleccionada.",
+                        "Termina el método. No tiene sentido seguir buscando en otros nodos externos, porque ya se encontró el externo solicitado.",
+                        "Cierra el if que identificó el nodo externo.",
+                        "Si el dato externo no coincidió, avanza actualExterno al siguiente nodo externo.",
+                        "Cierra el recorrido externo. Se alcanza cuando se revisaron todos los nodos externos.",
+                        "Informa que no se encontró el nodo externo que debía contener la sublista.",
+                        "Cierra el método."
+                ]
+        },
+        "eliminarNodoExterno": {
+                "summary": "Elimina un nodo de la lista externa. Trata por separado la lista vacía y la eliminación de cabeza; para cualquier otra posición utiliza un cursor que revisa el nodo siguiente y reajusta enlaces para saltarse el nodo encontrado.",
+                "lines": [
+                        "Declara un método público sin retorno que recibe el dato del nodo externo que se desea eliminar.",
+                        "Comprueba si cabeza es null. Esta validación evita intentar acceder a un nodo cuando la multilista está vacía.",
+                        "Muestra un mensaje para indicar que no hay elementos externos que puedan eliminarse.",
+                        "Termina el método porque no existe ningún nodo que procesar.",
+                        "Cierra el bloque que maneja el caso de lista vacía.",
+                        "Comprueba aparte si el dato del primer nodo coincide con el dato solicitado. La cabeza requiere un tratamiento especial porque no tiene un nodo anterior.",
+                        "Mueve cabeza al nodo siguiente. El primer nodo queda fuera de la cadena enlazada y el segundo pasa a ser la nueva cabeza.",
+                        "Termina el método después de eliminar la antigua cabeza.",
+                        "Cierra el bloque que elimina el primer nodo.",
+                        "Inicializa actual en cabeza. Como el primer nodo no era el buscado, se comenzará a revisar desde él.",
+                        "Recorre mientras exista un nodo después de actual. Se mira hacia adelante porque se necesita modificar el enlace del nodo anterior al que será eliminado.",
+                        "Compara el dato del nodo siguiente con el dato buscado. Así se identifica el objetivo sin perder la referencia a su anterior.",
+                        "Hace que actual apunte al nodo que está después del objetivo. El enlace salta por encima del nodo que se elimina de la cadena.",
+                        "Termina el método una vez reajustado el enlace.",
+                        "Cierra el if que comprobó el nodo siguiente.",
+                        "Si no era el nodo buscado, avanza actual una posición en la lista externa.",
+                        "Cierra el while. Si se alcanza, se llegó al último nodo sin encontrar el dato.",
+                        "Muestra un mensaje indicando que el nodo externo solicitado no existe.",
+                        "Cierra el método."
+                ]
+        },
+        "eliminarNodoInterno": {
+                "summary": "Busca el nodo externo que contiene la sublista y elimina de ella el nodo interno solicitado. Comprueba primero si la sublista está vacía y trata de forma especial la eliminación de su primer nodo; para los demás, reajusta el enlace del nodo anterior.",
+                "lines": [
+                        "Declara un método público sin retorno. Recibe el dato del nodo externo propietario de la sublista y el dato del nodo interno que se eliminará.",
+                        "Coloca actualExterno en cabeza para iniciar la búsqueda en la lista externa.",
+                        "Recorre la lista externa mientras actualExterno no sea null.",
+                        "Comprueba si el dato del nodo externo actual coincide con datoExterno.",
+                        "Verifica si la sublista interna de ese nodo externo está vacía, es decir, si su referencia inicial es null.",
+                        "Muestra un mensaje indicando que no hay nodos internos que eliminar en esa sublista.",
+                        "Termina el método porque la sublista seleccionada está vacía.",
+                        "Cierra la comprobación de sublista vacía.",
+                        "Comprueba si el primer nodo interno contiene el dato que se desea eliminar. Se trata aparte porque no existe un nodo interno anterior a él.",
+                        "Actualiza la referencia inicial de la sublista para que apunte al segundo nodo interno. De este modo, el primero queda desconectado.",
+                        "Termina el método después de eliminar el primer nodo interno.",
+                        "Cierra el bloque que elimina el primer nodo interno.",
+                        "Inicializa actualInterno en el primer nodo de la sublista. Se utiliza para buscar los nodos internos restantes.",
+                        "Recorre mientras exista un nodo después de actualInterno. El cursor se mantiene en el anterior al posible objetivo para poder cambiar su enlace.",
+                        "Compara el dato del nodo siguiente con datoInterno.",
+                        "Reasigna el enlace siguiente del nodo actual para que apunte al nodo que viene después del objetivo. El enlace evita el nodo que se elimina.",
+                        "Termina el método después de reajustar el enlace interno.",
+                        "Cierra la condición que comprobó el siguiente nodo interno.",
+                        "Si el nodo siguiente no era el buscado, avanza actualInterno al siguiente nodo.",
+                        "Cierra el while interno. Se alcanza cuando se revisó toda la sublista sin encontrar el dato solicitado.",
+                        "Muestra un mensaje indicando que el nodo interno no se encontró dentro de la sublista seleccionada.",
+                        "Termina el método: el nodo externo sí existía, pero el dato interno no.",
+                        "Cierra el bloque que se ejecuta cuando se encuentra el nodo externo.",
+                        "Si el nodo externo actual no coincide, avanza actualExterno al siguiente nodo externo.",
+                        "Cierra el recorrido externo. Se llega aquí cuando todos los nodos externos fueron revisados.",
+                        "Muestra un mensaje indicando que el nodo externo solicitado no existe.",
+                        "Cierra el método."
+                ]
+        },
+        "imprimir": {
+                "summary": "Recorre la multilista en dos niveles. Por cada nodo externo imprime su dato, recorre e imprime todos los nodos de su sublista interna y luego pasa al siguiente nodo externo.",
+                "lines": [
+                        "Declara un método público sin retorno. Su objetivo es mostrar en consola el contenido de la multilista.",
+                        "Inicializa actualExterno en cabeza para comenzar desde el primer nodo externo.",
+                        "Recorre la lista externa mientras actualExterno apunte a un nodo válido.",
+                        "Imprime el dato del nodo externo actual seguido de dos puntos y un espacio. print no hace salto de línea, por lo que los nodos internos aparecerán en la misma línea.",
+                        "Obtiene la referencia al primer nodo interno del nodo externo actual. Cada nodo externo puede tener su propia sublista.",
+                        "Recorre la sublista interna mientras actualInterno no sea null.",
+                        "Imprime el dato del nodo interno actual y una flecha para separar visualmente los elementos de la sublista.",
+                        "Avanza actualInterno al siguiente nodo interno.",
+                        "Cierra el while interno. Se alcanza cuando ya se imprimieron todos los nodos internos de ese nodo externo.",
+                        "Imprime una cadena vacía con println para pasar a la línea siguiente antes de procesar el próximo nodo externo.",
+                        "Avanza actualExterno al siguiente nodo externo para repetir el proceso con su propia sublista.",
+                        "Cierra el while externo. Se alcanza después de procesar todos los nodos externos.",
+                        "Cierra el método."
+                ]
+        }
+};
+
+    // ================== Elementos DOM ==================
+    const codeBody = document.getElementById('code-display');
+    const methodTitle = document.getElementById('method-title');
+    const methodSelect = document.getElementById('method-select');
+    const inputsContainer = document.getElementById('inputs-container');
+    const visualContainer = document.getElementById('visual-multilist');
+    const statusMsg = document.getElementById('status-msg');
+    const btnNext = document.getElementById('btn-next');
+    const btnStart = document.getElementById('btn-start');
+    const btnAll = document.getElementById('btn-all');
+    const guideTitle = document.getElementById('guide-title');
+    const guideCounter = document.getElementById('guide-counter');
+    const guideCode = document.getElementById('guide-code');
+    const guideText = document.getElementById('guide-text');
+
+    // ================== Estado de la simulación ==================
+    let simulating = false;
+    let steps = [];
+    let stepIdx = -1;
+    let curPtrs = [];
+
+    // ================== Código con resaltado ==================
+    function highlightJava(text) {
+        const esc = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        return esc.replace(
+            /("[^"]*")|\b(public|void|while|if|else|return|new|null)\b|\b(NodoExterno|NodoInterno|String|System)\b|\b([A-Za-z_]\w*)(?=\()/g,
+            (m, str, kw, type, meth) => {
+                if (str) return `<span class="string">${str}</span>`;
+                if (kw) return `<span class="keyword">${kw}</span>`;
+                if (type) return `<span class="type">${type}</span>`;
+                if (meth) return `<span class="method">${meth}</span>`;
+                return m;
+            });
+    }
+
+    function renderCode(name) {
+        codeBody.innerHTML = '';
+        METHODS[name].code.forEach((raw, i) => {
+            const lead = raw.match(/^ */)[0].length;
+            const line = document.createElement('div');
+            line.className = 'line';
+            line.id = 'l-' + (i + 1);
+            line.setAttribute('role', 'button');
+            line.setAttribute('tabindex', '0');
+            line.setAttribute('aria-label', 'Explicar línea ' + (i + 1));
+            line.addEventListener('click', () => {
+                if (simulating) return;
+                showLineGuide(name, i + 1);
+                hl(i + 1);
+            });
+            line.addEventListener('keydown', event => {
+                if ((event.key === 'Enter' || event.key === ' ') && !simulating) {
+                    event.preventDefault();
+                    showLineGuide(name, i + 1);
+                    hl(i + 1);
+                }
+            });
+            const ln = document.createElement('span');
+            ln.className = 'ln';
+            ln.textContent = i + 1;
+            const code = document.createElement('span');
+            code.className = 'code';
+            code.style.paddingLeft = (lead * 0.75) + 'ch';
+            code.innerHTML = highlightJava(raw.slice(lead));
+            line.appendChild(ln);
+            line.appendChild(code);
+            codeBody.appendChild(line);
+        });
+    }
+
+    function clearHighlights() {
+        document.querySelectorAll('.line').forEach(el => el.classList.remove('active'));
+    }
+
+    function showLineGuide(name, lineNumber = 0) {
+        const guide = LINE_GUIDE[name];
+        const method = METHODS[name];
+        if (!guide || !method) return;
+        if (lineNumber < 1 || lineNumber > method.code.length) {
+            guideTitle.textContent = 'Propósito de ' + name;
+            guideCounter.textContent = method.code.length + ' líneas';
+            guideCode.hidden = true;
+            guideCode.textContent = '';
+            guideText.textContent = guide.summary;
+            return;
+        }
+        guideTitle.textContent = 'Línea ' + lineNumber + ' · ' + name;
+        guideCounter.textContent = 'Línea ' + lineNumber + ' de ' + method.code.length;
+        guideCode.hidden = false;
+        guideCode.textContent = method.code[lineNumber - 1].trim();
+        guideText.textContent = guide.lines[lineNumber - 1];
+    }
+
+    function hl(num) {
+        clearHighlights();
+        const el = document.getElementById('l-' + num);
+        if (el) {
+            el.classList.add('active');
+            el.scrollIntoView({ block: 'nearest' });
+        }
+    }
+
+    // ================== Interfaz de método ==================
+    function changeMethod() {
+        const name = methodSelect.value;
+        methodTitle.textContent = name;
+        renderCode(name);
+        showLineGuide(name, 0);
+        clearHighlights();
+        inputsContainer.innerHTML = '';
+        METHODS[name].inputs.forEach((label, i) => {
+            const wrap = document.createElement('label');
+            wrap.className = 'field';
+            wrap.textContent = label;
+            const inp = document.createElement('input');
+            inp.type = 'text';
+            inp.maxLength = 12;
+            inp.id = 'inp-' + i;
+            inp.placeholder = label;
+            inp.addEventListener('keydown', e => { if (e.key === 'Enter') startSim(); });
+            wrap.appendChild(inp);
+            inputsContainer.appendChild(wrap);
+        });
+        if (!METHODS[name].inputs.length) {
+            const note = document.createElement('span');
+            note.style.cssText = 'color:#7f8c8d;font-size:0.85rem;';
+            note.textContent = 'Este método no necesita parámetros.';
+            inputsContainer.appendChild(note);
+        }
+        if (!simulating) {
+            statusMsg.textContent = 'Método seleccionado: ' + name + '. La multilista conserva su estado actual.';
+        }
+        curPtrs = [];
+        render();
+    }
+
+    function setBusy(busy) {
+        methodSelect.disabled = busy;
+        inputsContainer.querySelectorAll('input').forEach(i => i.disabled = busy);
+        btnStart.disabled = busy;
+        btnNext.disabled = !busy;
+        btnAll.disabled = !busy;
+        if (!busy) btnNext.textContent = 'Siguiente Paso';
+    }
+
+    // ================== Renderizado visual ==================
+    function chip(label) {
+        const cls = {
+            cabeza: 'c-cabeza', actual: 'c-actual', actualExterno: 'c-actual', actualInterno: 'c-actual',
+            anterior: 'c-prev', temp: 'c-temp', nuevoNodo: 'c-new'
+        }[label] || 'c-actual';
+        const c = document.createElement('span');
+        c.className = 'chip ' + cls;
+        return c;
+    }
+
+    function buildNode(kind, node) {
+        const div = document.createElement('div');
+        div.className = 'node node-' + kind;
+        if (node.linked === false) div.classList.add('pending');
+        if (node.removed) div.classList.add('removed');
+        const d = document.createElement('div');
+        d.className = 'node-data';
+        d.textContent = node.name;
+        const p = document.createElement('div');
+        p.className = 'node-pointer';
+        p.innerHTML = '<div class="dot"></div>';
+        div.appendChild(d);
+        div.appendChild(p);
+        return div;
+    }
+
+    function render() {
+        visualContainer.innerHTML = '';
+        const chain = extChain();
+        const detached = data.filter(n => !isLinked(n));
+        const ordered = [...chain, ...detached];
+        const headId = chain.length ? chain[0].id : null;
+
+        if (chain.length === 0) {
+            const m = document.createElement('div');
+            m.className = 'empty-msg';
+            m.textContent = 'cabeza = null (Multilista vacía)';
+            visualContainer.appendChild(m);
+        }
+
+        ordered.forEach((e, idx) => {
+            const linked = isLinked(e);
+            const col = document.createElement('div');
+            col.className = 'ext-col' + (linked ? '' : ' detached');
+
+            // punteros del nodo externo (zona reservada, sin superposición)
+            const tags = document.createElement('div');
+            tags.className = 'tag-row';
+            if (e.id === headId) {
+                const c = chip('cabeza'); c.textContent = '↓ cabeza'; tags.appendChild(c);
+            }
+            curPtrs.filter(p => p.kind === 'ext' && p.id === e.id).forEach(p => {
+                const c = chip(p.label); c.textContent = '↓ ' + p.label; tags.appendChild(c);
+            });
+            col.appendChild(tags);
+
+            const holder = document.createElement('div');
+            holder.className = 'ext-holder';
+            holder.appendChild(buildNode('ext', e));
+            if (linked && idx < chain.length - 1) {
+                const ah = document.createElement('div');
+                ah.className = 'arrow-horizontal';
+                holder.appendChild(ah);
+            }
+            col.appendChild(holder);
+
+            // sublista
+            const list = document.createElement('div');
+            list.className = 'int-list';
+            const linkedInts = e.courses.filter(isLinked);
+            const detInts = e.courses.filter(c => !isLinked(c));
+
+            const addRow = (c, withArrow) => {
+                if (withArrow) {
+                    const av = document.createElement('div');
+                    av.className = 'arrow-vertical';
+                    list.appendChild(av);
+                }
+                const row = document.createElement('div');
+                row.className = 'int-row' + (withArrow ? '' : ' detached-row');
+                row.appendChild(buildNode('int', c));
+                const t = document.createElement('div');
+                t.className = 'int-tags';
+                curPtrs.filter(p => p.kind === 'int' && p.id === c.id).forEach(p => {
+                    const ch = chip(p.label); ch.textContent = '← ' + p.label; t.appendChild(ch);
+                });
+                row.appendChild(t);
+                list.appendChild(row);
+            };
+            linkedInts.forEach(c => addRow(c, true));
+            detInts.forEach(c => addRow(c, false));
+            col.appendChild(list);
+
+            visualContainer.appendChild(col);
+        });
+    }
+
+    // ================== Simulación ==================
+    function startSim() {
+        if (simulating) return;
+        const name = methodSelect.value;
+        const m = METHODS[name];
+        const args = m.inputs.map((_, i) => document.getElementById('inp-' + i).value.trim());
+        if (args.some(a => a === '')) {
+            statusMsg.textContent = 'Completa todos los parámetros antes de iniciar.';
+            const empty = inputsContainer.querySelector('input[value=""]') ||
+                [...inputsContainer.querySelectorAll('input')].find(i => !i.value.trim());
+            if (empty) empty.focus();
+            return;
+        }
+        steps = m.plan(args);
+        stepIdx = -1;
+        simulating = true;
+        curPtrs = [];
+        setBusy(true);
+        nextStep();
+    }
+
+    function nextStep() {
+        if (!simulating) return;
+        stepIdx++;
+        if (stepIdx >= steps.length) {
+            finish();
+            return;
+        }
+        const s = steps[stepIdx];
+        if (s.apply) s.apply();
+        curPtrs = s.ptrs;
+        hl(s.line);
+        statusMsg.textContent = s.msg;
+        showLineGuide(methodSelect.value, s.line);
+        render();
+        if (stepIdx === steps.length - 1) btnNext.textContent = 'Finalizar';
+    }
+
+    function runAll() {
+        while (simulating) nextStep();
+    }
+
+    function finish() {
+        // Descartar nodos desconectados o sin enlazar
+        data = data.filter(isLinked);
+        data.forEach(e => { e.courses = e.courses.filter(isLinked); });
+        simulating = false;
+        steps = [];
+        stepIdx = -1;
+        curPtrs = [];
+        clearHighlights();
+        setBusy(false);
+        statusMsg.textContent = 'Método finalizado. La multilista conserva los cambios; puedes ejecutar otro método.';
+        render();
+    }
+
+    function abortSim() {
+        simulating = false;
+        steps = [];
+        stepIdx = -1;
+        curPtrs = [];
+        clearHighlights();
+        setBusy(false);
+    }
+
+    function resetLab() {
+        abortSim();
+        data = sampleData();
+        statusMsg.textContent = 'Multilista reiniciada con el ejemplo: Juan, María y Pedro.';
+        render();
+    }
+
+    function emptyList() {
+        abortSim();
+        data = [];
+        statusMsg.textContent = 'Multilista vacía (cabeza = null). Empieza con agregarNodoExterno.';
+        render();
+    }
+
+        // ================== Zoom independiente y pantalla completa ==================
+    const ZOOM_MIN = 0.6, ZOOM_MAX = 2.0, ZOOM_STEP = 0.1;
+    const zoomState = { code: 1, visual: 1 };
+
+    function changeZoom(target, direction) {
+        const next = Math.round((zoomState[target] + direction * ZOOM_STEP) * 100) / 100;
+        zoomState[target] = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, next));
+        applyZoom();
+    }
+
+    function applyZoom() {
+        const root = document.documentElement.style;
+        root.setProperty('--code-zoom', zoomState.code);
+        root.setProperty('--visual-zoom', zoomState.visual);
+        ['code', 'visual'].forEach(target => {
+            document.getElementById(target + '-zoom-label').textContent = Math.round(zoomState[target] * 100) + '%';
+            document.getElementById(target + '-minus').disabled = zoomState[target] <= ZOOM_MIN + 0.001;
+            document.getElementById(target + '-plus').disabled = zoomState[target] >= ZOOM_MAX - 0.001;
+        });
+    }
+
+    function toggleFullscreen() {
+        const doc = document;
+        const el = doc.documentElement;
+        const active = doc.fullscreenElement || doc.webkitFullscreenElement;
+        try {
+            if (!active) {
+                const req = el.requestFullscreen || el.webkitRequestFullscreen;
+                if (req) req.call(el);
+            } else {
+                const exit = doc.exitFullscreen || doc.webkitExitFullscreen;
+                if (exit) exit.call(doc);
+            }
+        } catch (err) { /* el navegador puede bloquear la pantalla completa */ }
+    }
+
+    function syncFullscreenState() {
+        const active = !!(document.fullscreenElement || document.webkitFullscreenElement);
+        document.body.classList.toggle('is-fullscreen', active);
+        const btn = document.getElementById('btn-fullscreen');
+        btn.textContent = active ? '🗗' : '⛶';
+        btn.title = active ? 'Salir de pantalla completa' : 'Pantalla completa';
+    }
+    document.addEventListener('fullscreenchange', syncFullscreenState);
+    document.addEventListener('webkitfullscreenchange', syncFullscreenState);
+
+    // ================== Inicialización ==================
+    applyZoom();
+    changeMethod();
+    refreshConsole();
+</script>
+</body>
+</html>
