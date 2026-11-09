@@ -76,4 +76,5 @@ java -cp out com.equipo1.gestionacademica.Main
 
 ## Declaración sobre el uso de IA
 
-Se utilizó inteligencia artificial como apoyo para revisar el repositorio, integrar archivos Java proporcionados, organizar y redactar esta documentación. El equipo debe revisar el resultado, validar el funcionamiento del programa y poder explicar sus decisiones y su código.
+La IA se utilizó solo como apoyo para escribir más rápido código, pruebas y documentación. No se utilizó para pensar la solución ni para tomar las decisiones principales. El diseño, el análisis y la comprensión del proyecto fueron realizados por el equipo.
+
