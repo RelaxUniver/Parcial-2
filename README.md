@@ -328,6 +328,7 @@ Al ejecutar `Main.java`, el programa informa:
 - Cantidad de pruebas exitosas.
 - Cantidad de pruebas fallidas.
 
+El resultado concreto se obtiene al ejecutar el programa. La existencia de los casos de prueba en el código no implica que todos hayan pasado en cualquier entorno de ejecución.
 
 ## 9. Estructura del repositorio
 
@@ -338,11 +339,11 @@ Parcial-2/
 │
 ├── documentación/
 │   └── Presentación.pptx
-│   ├── Documentacion.pdf
-│   ├── Cola_Explicada_Linea_por_Linea.html
-│   ├── Pila_Explicada_Linea_por_Linea.html
+│   ├── Documentación.pdf
 │   ├── Multilista_Explicada_Linea_por_Linea.html
-│   └── Recursividad_Explicada_Linea_por_Linea.html
+│   ├── Pila_Explicada_Linea_por_Linea.html
+│   ├── Cola_Explicada_Linea_por_Linea.html
+│   ├── Recursividad_Explicada_Linea_por_Linea.html
 │
 ├── src/
 │   └── com/
@@ -361,11 +362,12 @@ Parcial-2/
 
 | Directorio o archivo | Contenido |
 |---|---|
-| `documentación/` | Material de documentación y presentación del proyecto. |
+| `documentación/` | Material de documentación, presentación y los html que explican algunos de los métodos del proyecto. |
 | `src/` | Código fuente de la aplicación. |
 | `estructuras/` | Implementaciones de las estructuras de datos utilizadas. |
 | `modelo/` | Clases que representan las entidades y registros del sistema. |
 | `excepciones/` | Excepciones personalizadas para el control de errores. |
+| `SistemaGestionAcademica.java` | Controlador principal que integra multilista, pila y cola. |
 | `Main.java` | Punto de entrada y pruebas manuales del proyecto. |
 | `README.md` | Documentación general del proyecto. |
 
@@ -417,6 +419,7 @@ Los materiales relacionados con el proyecto se encuentran en el directorio de do
 |---|---|
 | Carpeta de documentación | [Abrir documentación](documentación/) |
 | Presentación del proyecto | [Abrir presentación](documentación/Presentación.pptx) |
+| Documentación en PDF del proyecto | [Abrir pdf](documentación/Documentación.pdf) |
 | Código fuente principal | [Explorar código fuente](src/com/equipo1/gestionacademica/) |
 | Estructuras de datos | [Explorar estructuras](src/com/equipo1/gestionacademica/estructuras/) |
 | Modelo de datos | [Explorar modelo](src/com/equipo1/gestionacademica/modelo/) |
