@@ -280,6 +280,12 @@ select:disabled, input:disabled { background: #f0f0f0; cursor: not-allowed; }
 .console-head button { padding: 2px 10px; font-size: .72rem; background: #3e4451; color: #abb2bf; border: 0; border-radius: 5px; cursor: pointer; }
 .console-out { margin: 0; padding: 9px 12px; min-height: 42px; max-height: 75px; overflow-y: auto; color: #98c379; font: .78rem/1.4 Consolas,'Courier New',monospace; white-space: pre-wrap; }
 
+.guide-rules { margin-top: 10px; display: flex; flex-direction: column; gap: 5px; }
+.guide-rules:empty { display: none; }
+.guide-rule { padding: 6px 9px; border-radius: 6px; background: #eef7ee; border-left: 3px solid #2ecc71; color: #2d5a3a; font-size: .76rem; line-height: 1.4; overflow-wrap: anywhere; }
+.guide-rule b { color: #1e7a45; }
+input[readonly] { background: #f0f4f8; color: #2c3e50; font-weight: 700; }
+
 /* ---------- Pantalla completa ---------- */
 body.is-fullscreen { padding: 10px; background: var(--bg-color); overflow: auto; }
 body.is-fullscreen .panel { height: calc(100vh - 20px); }
@@ -332,7 +338,7 @@ body.is-fullscreen .panel { height: calc(100vh - 20px); }
                 <button type="button" class="tool" id="btn-fullscreen" onclick="toggleFullscreen()" title="Pantalla completa" aria-label="Pantalla completa">⛶</button>
             </div>
         </div>
-        <p class="visual-subtitle">Cada bloque representa un NodoHistorial: dato + siguiente.</p>
+        <p class="visual-subtitle">Cada bloque es un NodoHistorial: un RegistroHistorial (con su turno) + siguiente.</p>
         <div class="legend">
             <span class="legend-item"><i class="legend-swatch legend-top"></i>cima</span>
             <span class="legend-item"><i class="legend-swatch legend-new"></i>nuevoNodo</span>
@@ -352,7 +358,8 @@ body.is-fullscreen .panel { height: calc(100vh - 20px); }
             </div>
             <code class="guide-code" id="guide-code" hidden></code>
             <p class="guide-text" id="guide-text">Selecciona push() o pop() y haz clic sobre una línea para conocer qué hace. También puedes iniciar la simulación y avanzar paso a paso.</p>
-            <div class="guide-hint">Solo se muestran las operaciones que modifican la estructura: push() y pop().</div>
+            <div class="guide-rules" id="guide-rules"></div>
+            <div class="guide-hint">Verde: regla de negocio (RN), requerimiento funcional (RF) o no funcional (RNF) que cumple la línea. Solo se muestran las operaciones que modifican la estructura: push() y pop().</div>
         </section>
 
         <div class="status-message" id="status-msg">La pila conserva sus elementos entre operaciones. El último registro agregado será el primero en salir.</div>
@@ -404,13 +411,13 @@ const METHODS = {
         ],
         summary: 'Inserta un registro en la cima de la pila. Primero valida el parámetro, crea un NodoHistorial, conecta su campo siguiente con la cima anterior, mueve cima al nodo nuevo e incrementa total.',
         lines: [
-            'Declara el método público push. Recibe un objeto RegistroHistorial que será almacenado en un nuevo nodo. Al ser una pila, este elemento se incorpora por la cima.',
-            'Comprueba que el registro recibido no sea null. La estructura no debe guardar un nodo sin un registro válido.',
+            'Declara el método público push. Recibe un objeto RegistroHistorial que será almacenado en un nuevo nodo. Al ser una pila, este elemento se incorpora por la cima. En el sistema la invoca registrarHistorial(), que antes incrementa contadorOperaciones y construye el RegistroHistorial con ese turno.',
+            'Comprueba que el registro recibido no sea null. La estructura no debe guardar un nodo sin un registro válido. NodoHistorial repite esta misma validación en su constructor, por lo que la protección es doble.',
             'Si el registro es null, comienza a lanzar DatoInvalidoException. La excepción detiene la operación y no se modifica la pila.',
             'Es el mensaje que explica el motivo del error: no se puede insertar un registro nulo.',
             'Cierra la llamada al constructor de la excepción.',
             'Cierra el bloque de validación. Si registro no era null, la ejecución continúa con la creación del nodo.',
-            'Crea un NodoHistorial nuevo que guarda el objeto registro. En el constructor de NodoHistorial, su enlace siguiente se inicializa en null.',
+            'Crea un NodoHistorial nuevo que guarda el objeto registro. En el constructor de NodoHistorial, su enlace siguiente se inicializa en null (y si el dato fuera null lanzaría DatoInvalidoException).',
             'Establece que el siguiente del nodo nuevo sea la cima que existía antes. Así, el nodo nuevo queda conectado delante de la cadena actual. Si la pila estaba vacía, cima era null.',
             'Actualiza cima para que apunte al nodo recién creado. Este pasa a ser el primer nodo de la cadena y, por tanto, el tope de la pila.',
             'Incrementa el contador porque ahora hay un nodo más almacenado.',
@@ -434,22 +441,65 @@ const METHODS = {
         ],
         summary: 'Extrae el registro que está en la cima. Comprueba que la pila no esté vacía, conserva el dato del nodo superior, mueve cima al siguiente nodo, decrementa total y devuelve el registro extraído.',
         lines: [
-            'Declara pop() como un método que devuelve un RegistroHistorial. La operación siempre extrae el elemento que está en cima, porque la pila sigue el principio LIFO: el último en entrar es el primero en salir.',
+            'Declara pop() como un método que devuelve un RegistroHistorial. La operación siempre extrae el elemento que está en cima, porque la pila sigue el principio LIFO: el último en entrar es el primero en salir. Ojo: en el sistema, deshacerUltimoCambio() no se apoya en pop() para leer el cambio: primero consulta con peek(), restaura el valorAnterior y solo al final llama a pop() para retirar el registro.',
             'Comprueba si la pila está vacía. estaVacia() evalúa si cima == null; aquí se utiliza únicamente para proteger el acceso al nodo superior.',
-            'Si no existe un nodo en cima, lanza EstructuraVaciaException. No es posible extraer un elemento de una pila vacía.',
+            'Si no existe un nodo en cima, lanza EstructuraVaciaException. No es posible extraer un elemento de una pila vacía. Al deshacer un cambio con la pila vacía, la excepción se lanza antes, en peek(), con el mensaje "No hay cambios para consultar"; el mensaje "para deshacer" aparece cuando se llama a pop() directamente.',
             'Es el mensaje que describe la causa de la excepción.',
             'Cierra la llamada al constructor de la excepción.',
             'Cierra el bloque de validación. Cuando la pila contiene al menos un nodo, la ejecución continúa con la extracción.',
             'Obtiene el objeto RegistroHistorial almacenado en el nodo señalado por cima y lo guarda en registro. Se conserva antes de mover cima para poder devolverlo después.',
             'Mueve cima al nodo siguiente del que estaba arriba. Con ese cambio, el segundo nodo pasa a ser la nueva cima y el nodo anterior queda fuera de la cadena de la pila.',
             'Decrementa total porque se acaba de retirar un nodo.',
-            'Devuelve el registro que se guardó antes de modificar cima. El dato extraído no se pierde: se entrega como resultado del método.',
+            'Devuelve el registro que se guardó antes de modificar cima. El dato extraído no se pierde: se entrega como resultado del método. deshacerUltimoCambio() descarta este valor, porque ya restauró el valorAnterior usando el registro obtenido con peek().',
             'Cierra el método pop(). La extracción queda completada.'
         ]
     }
 };
 
+
+// Reglas de negocio (RN), requerimientos funcionales (RF) y no funcionales (RNF) que cumple cada línea.
+METHODS.push.rulesSummary = [
+    'RN-39 · Cada actualización exitosa queda registrada en el historial: registrarHistorial() llama a push().',
+    'RN-48 · El historial es una pila LIFO: el último cambio registrado es el primero disponible.',
+    'RN-53 · No se permiten elementos nulos en las estructuras de datos.',
+    'RN-57 · Los datos inválidos lanzan DatoInvalidoException.'
+];
+METHODS.push.rules = [
+    ['RN-39 · RF-40 · Cada cambio exitoso se registra en la pila de historial.', 'RN-48 · RNF-15 · La pila se comporta como LIFO.'],
+    ['RN-53 · RNF-02 · No se permiten elementos nulos en las estructuras de datos.'],
+    ['RN-57 · RF-49 · Un dato inválido lanza DatoInvalidoException (RNF-05: excepciones propias).'],
+    ['RNF-06 · RNF-22 · El mensaje es descriptivo e indica la causa del error.'],
+    [],
+    ['RNF-01 · RNF-20 · Se valida antes de modificar el estado: si la validación falla, la pila no cambia.'],
+    ['RN-53 · NodoHistorial repite la validación de null en su constructor.', 'RN-40 a RN-47 · El RegistroHistorial ya llega validado desde su constructor (turno, descripción, departamento, profesor, tipo y valores).'],
+    ['RN-48 · El nodo nuevo apunta a la cima anterior: queda encima de los cambios previos.'],
+    ['RN-48 · RF-44 · La nueva cima es el último cambio registrado, el primero disponible.'],
+    ['RF-48 · total permite consultar la cantidad de registros del historial.'],
+    []
+];
+METHODS.pop.rulesSummary = [
+    'RN-48 · LIFO: pop() retira siempre la cima, es decir, el último cambio registrado.',
+    'RN-50 · Al deshacer un cambio, su registro se elimina de la pila: deshacerUltimoCambio() llama a pop() al final.',
+    'RN-51 · RN-54 · Con la pila vacía no se puede deshacer ni extraer: se lanza EstructuraVaciaException.'
+];
+METHODS.pop.rules = [
+    ['RN-48 · RNF-15 · El último cambio registrado es el primero que sale.', 'RN-50 · RF-47 · Al deshacer, el registro se elimina del historial con pop().'],
+    ['RN-54 · RF-52 · Operar una estructura vacía lanza una excepción específica.', 'RN-51 · No se puede deshacer un cambio si el historial está vacío.'],
+    ['RN-54 · RNF-05 · EstructuraVaciaException es la excepción propia de las estructuras vacías.'],
+    ['RNF-06 · RNF-22 · El mensaje es descriptivo: indica que no hay cambios para deshacer.'],
+    [],
+    ['RNF-20 · Si la validación falla, la pila no cambia.'],
+    ['RN-48 · Se lee el dato de la cima antes de moverla.'],
+    ['RN-48 · RN-50 · La cima pasa al siguiente nodo: el cambio retirado sale del historial y el anterior queda disponible.'],
+    ['RF-48 · total refleja la cantidad de registros del historial.'],
+    ['RN-49 · RF-46 · El valorAnterior se restaura en deshacerUltimoCambio() con el registro de peek(); el valor devuelto por pop() se descarta.'],
+    []
+];
+
 let nextId = 1;
+let contadorOperaciones = 103;   // como en SistemaGestionAcademica: solo sube, nunca baja
+let ultimoPushNulo = false;
+let ultimoPushTurno = '';
 let cima = null;
 let total = 0;
 let nuevoNodoPendiente = null;
@@ -473,6 +523,7 @@ const guideTitle = document.getElementById('guide-title');
 const guideCounter = document.getElementById('guide-counter');
 const guideCode = document.getElementById('guide-code');
 const guideText = document.getElementById('guide-text');
+const guideRules = document.getElementById('guide-rules');
 const consoleEl = document.getElementById('console-out');
 
 /* ================== Zoom independiente y pantalla completa ================== */
@@ -522,6 +573,11 @@ document.addEventListener('fullscreenchange', syncFullscreenState);
 document.addEventListener('webkitfullscreenchange', syncFullscreenState);
 
 /* ================== Lógica de la pila ================== */
+function updateTurnoField() {
+    const input = document.getElementById('record-id');
+    if (input) input.value = String(contadorOperaciones + 1);
+}
+
 function createNode(value) {
     return { id: nextId++, value: value, next: null };
 }
@@ -534,6 +590,7 @@ function loadExample() {
     c.next = b;
     cima = c;
     total = 3;
+    contadorOperaciones = 103;
     nuevoNodoPendiente = null;
     nodoExtraido = null;
     ultimoRetorno = '';
@@ -612,6 +669,7 @@ function showLineGuide(name, lineNumber = 0) {
         guideCode.hidden = true;
         guideCode.textContent = '';
         guideText.textContent = method.summary;
+        renderRules(method.rulesSummary);
         return;
     }
     guideTitle.textContent = 'Línea ' + lineNumber + ' · ' + method.title;
@@ -619,6 +677,24 @@ function showLineGuide(name, lineNumber = 0) {
     guideCode.hidden = false;
     guideCode.textContent = method.code[lineNumber - 1].trim();
     guideText.textContent = method.lines[lineNumber - 1];
+    renderRules(method.rules[lineNumber - 1]);
+}
+
+function renderRules(list) {
+    guideRules.innerHTML = '';
+    (list || []).forEach(text => {
+        const row = document.createElement('div');
+        row.className = 'guide-rule';
+        const m = text.match(/^((?:[A-Z]+-\d+(?: a [A-Z]+-\d+)? · )+)(.*)$/);
+        if (m) {
+            const ids = document.createElement('b');
+            ids.textContent = m[1];
+            row.append(ids, document.createTextNode(m[2]));
+        } else {
+            row.textContent = text;
+        }
+        guideRules.appendChild(row);
+    });
 }
 
 function changeMethod() {
@@ -632,20 +708,23 @@ function changeMethod() {
     if (name === 'push') {
         const label = document.createElement('label');
         label.className = 'field';
-        label.textContent = 'Identificador del registro';
+        label.textContent = 'Turno asignado por el sistema';
         const input = document.createElement('input');
         input.type = 'text';
         input.id = 'record-id';
-        input.maxLength = 16;
-        input.value = '104';
-        input.placeholder = 'Ej. 104';
-        input.addEventListener('keydown', event => { if (event.key === 'Enter') startSim(); });
+        input.readOnly = true;
+        input.title = 'registrarHistorial() hace contadorOperaciones++ y usa ese valor como turno (RN-41).';
         label.appendChild(input);
         inputsContainer.appendChild(label);
-        const note = document.createElement('span');
-        note.style.cssText = 'color:#7f8c8d;font-size:.76rem;';
-        note.textContent = 'Déjalo vacío para observar la validación de null.';
-        inputsContainer.appendChild(note);
+        const nullLabel = document.createElement('label');
+        nullLabel.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:.8rem;color:#52616b;font-weight:600;';
+        const check = document.createElement('input');
+        check.type = 'checkbox';
+        check.id = 'null-record';
+        check.style.cssText = 'width:auto;padding:0;';
+        nullLabel.append(check, document.createTextNode('Simular push(null)'));
+        inputsContainer.appendChild(nullLabel);
+        updateTurnoField();
     } else {
         const note = document.createElement('span');
         note.style.cssText = 'color:#7f8c8d;font-size:.82rem;';
@@ -674,7 +753,9 @@ function makePushSteps(value) {
     steps = [];
     const isNull = !value;
     let newNode = null;
-    addStep(1, 'Entramos en push(registro). Se va a insertar un objeto RegistroHistorial en la cima.');
+    addStep(1, isNull
+        ? 'Entramos en push(null). Esta llamada directa solo ocurre en pruebas: registrarHistorial() siempre construye un RegistroHistorial antes de llamar a push().'
+        : `Entramos en push(registro). registrarHistorial() incrementó contadorOperaciones y creó el RegistroHistorial del turno ${value}.`);
     addStep(2, isNull
         ? 'registro == null devuelve true. El parámetro está vacío y la validación impedirá insertar el nodo.'
         : 'registro == null devuelve false. El parámetro contiene un registro válido y se puede continuar.');
@@ -686,7 +767,7 @@ function makePushSteps(value) {
     }
     addStep(6, 'Se cierra el bloque de validación. Como el registro es válido, el flujo continúa después del if.');
     newNode = createNode(value);
-    addStep(7, `Se crea nuevoNodo con el RegistroHistorial #${value}. Todavía no está enlazado a la cadena de la pila.`, () => {
+    addStep(7, `Se crea nuevoNodo con el RegistroHistorial del turno ${value}. Todavía no está enlazado a la cadena de la pila.`, () => {
         nuevoNodoPendiente = newNode;
         renderStack();
     });
@@ -720,7 +801,7 @@ function makePopSteps() {
     }
     const removed = cima;
     addStep(2, 'estaVacia() devuelve false porque cima apunta a un nodo. La extracción puede continuar.');
-    addStep(7, `cima.getDato() obtiene el RegistroHistorial #${removed.value} y lo conserva en la variable registro.`, () => {
+    addStep(7, `cima.getDato() obtiene el RegistroHistorial del turno ${removed.value} y lo conserva en la variable registro.`, () => {
         ultimoRetorno = removed.value;
         renderStack();
     });
@@ -733,7 +814,7 @@ function makePopSteps() {
         total--;
         renderStack();
     });
-    addStep(10, `return registro devuelve el objeto RegistroHistorial #${removed.value} que se guardó antes de mover cima.`);
+    addStep(10, `return registro devuelve el RegistroHistorial del turno ${removed.value}, que se guardó antes de mover cima.`);
     addStep(11, 'Finaliza pop(). El nodo superior fue extraído y la nueva cima es el siguiente nodo, o null si la pila quedó vacía.');
 }
 
@@ -757,7 +838,14 @@ function buildNode(node, state = '') {
     box.className = 'stack-node' + (state ? ' ' + state : '');
     const data = document.createElement('div');
     data.className = 'node-data';
-    data.textContent = 'RegistroHistorial #' + node.value;
+    const turn = document.createElement('strong');
+    turn.textContent = 'Turno #' + node.value;
+    const kind = document.createElement('small');
+    kind.textContent = 'RegistroHistorial';
+    kind.style.cssText = 'display:block;font-weight:600;font-size:.66rem;color:#52616b;margin-top:2px;';
+    const dataText = document.createElement('div');
+    dataText.append(turn, kind);
+    data.appendChild(dataText);
     const next = document.createElement('div');
     next.className = 'node-next';
     const caption = document.createElement('span');
@@ -809,7 +897,7 @@ function renderStack() {
         const card = document.createElement('div');
         card.className = 'extra-card return-card';
         const value = nodoExtraido ? nodoExtraido.value : ultimoRetorno;
-        card.innerHTML = '<span>Registro devuelto:</span><strong>#' + escapeHtml(value) + '</strong>';
+        card.innerHTML = '<span>Registro devuelto:</span><strong>turno #' + escapeHtml(value) + '</strong>';
         extras.appendChild(card);
         visualStack.appendChild(extras);
     }
@@ -826,9 +914,13 @@ function startSim() {
     ultimoRetorno = '';
     nodoExtraido = null;
     if (name === 'push') {
-        const input = document.getElementById('record-id');
-        const value = input ? input.value.trim() : '';
-        makePushSteps(value);
+        const check = document.getElementById('null-record');
+        ultimoPushNulo = !!(check && check.checked);
+        // registrarHistorial() incrementa el contador antes de crear el registro y llamar a push().
+        // push(null) solo ocurre al llamar a la pila directamente (como en las pruebas de Main).
+        if (!ultimoPushNulo) contadorOperaciones++;
+        ultimoPushTurno = ultimoPushNulo ? '' : String(contadorOperaciones);
+        makePushSteps(ultimoPushTurno);
     } else {
         makePopSteps();
     }
@@ -877,21 +969,20 @@ function finishSim() {
     stepIndex = -1;
     setBusy(false);
     clearHighlights();
+    updateTurnoField();
     if (name === 'push') {
-        const input = document.getElementById('record-id');
-        const value = input ? input.value.trim() : '';
-        if (!value) {
-            appendConsole('push(): DatoInvalidoException. No se insertó ningún nodo.');
+        if (ultimoPushNulo) {
+            appendConsole('push(null): DatoInvalidoException. No se insertó ningún nodo.');
             statusMsg.textContent = 'El registro era null. Se lanzó DatoInvalidoException y la pila no cambió.';
         } else {
-            appendConsole('push(): se agregó RegistroHistorial #' + value + '. total = ' + total + '.');
-            statusMsg.textContent = 'push() finalizó. Registro #' + value + ' quedó en la cima.';
+            appendConsole('push(): se agregó el RegistroHistorial del turno ' + ultimoPushTurno + '. total = ' + total + '.');
+            statusMsg.textContent = 'push() finalizó. El turno ' + ultimoPushTurno + ' quedó en la cima. Si se deshace y se vuelve a registrar, el turno siguiente seguirá subiendo: el contador nunca baja.';
         }
     } else if (ultimoRetorno) {
-        appendConsole('pop(): se devolvió RegistroHistorial #' + ultimoRetorno + '. total = ' + total + '.');
+        appendConsole('pop(): se devolvió el RegistroHistorial del turno ' + ultimoRetorno + '. total = ' + total + '.');
         nodoExtraido = null;
         renderStack();
-        statusMsg.textContent = 'pop() finalizó. Se extrajo RegistroHistorial #' + ultimoRetorno + '.';
+        statusMsg.textContent = 'pop() finalizó. Se extrajo el turno ' + ultimoRetorno + '. El contador de turnos no baja: el próximo registro tendrá el turno ' + (contadorOperaciones + 1) + '.';
     } else {
         appendConsole('pop(): EstructuraVaciaException. La pila no cambió.');
         statusMsg.textContent = 'La pila está vacía. Se produjo EstructuraVaciaException y no se modificó la estructura.';
@@ -904,12 +995,14 @@ function abortSim() {
     stepIndex = -1;
     setBusy(false);
     clearHighlights();
+    updateTurnoField();
 }
 
 function resetLab() {
     abortSim();
     loadExample();
-    statusMsg.textContent = 'Pila reiniciada con tres registros de ejemplo: 103, 102 y 101 (de cima hacia abajo).';
+    updateTurnoField();
+    statusMsg.textContent = 'Pila reiniciada con tres registros de ejemplo: turnos 103, 102 y 101 (de cima hacia abajo).';
     renderStack();
 }
 
