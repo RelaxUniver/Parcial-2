@@ -1,333 +1,394 @@
 # Gestión Académica y Carga Docente
 
-Sistema de gestión académica desarrollado en Java como proyecto del Equipo 1 para la asignatura **Estructuras de Datos**.
+Proyecto del Equipo 1 para la asignatura **Estructuras de Datos**. Consiste en un sistema desarrollado en Java para administrar la carga docente de diferentes departamentos, gestionar la información de profesores y asignaturas, registrar modificaciones y procesar solicitudes de actualización.
 
-El proyecto permite administrar la carga docente de diferentes departamentos universitarios mediante estructuras de datos enlazadas implementadas manualmente. Incluye operaciones de gestión de departamentos, profesores y asignaturas, un sistema de historial de modificaciones y una cola para procesar solicitudes de actualización.
+---
 
-## 📌 Objetivo del proyecto
+## Índice
 
-El objetivo es implementar un sistema que permita organizar y administrar información académica, aplicando conceptos fundamentales de estructuras de datos, recursividad y programación orientada a objetos.
+- [1. Descripcion general](#1-descripcion-general)
+- [2. Objetivos del proyecto](#2-objetivos-del-proyecto)
+- [3. Funcionalidades principales](#3-funcionalidades-principales)
+- [4. Arquitectura y modelo de datos](#4-arquitectura-y-modelo-de-datos)
+- [5. Estructuras de datos](#5-estructuras-de-datos)
+- [6. Recorrido recursivo y profesores destacados](#6-recorrido-recursivo-y-profesores-destacados)
+- [7. Validaciones y manejo de excepciones](#7-validaciones-y-manejo-de-excepciones)
+- [8. Pruebas manuales](#8-pruebas-manuales)
+- [9. Estructura del repositorio](#9-estructura-del-repositorio)
+- [10. Requisitos y ejecucion](#10-requisitos-y-ejecucion)
+- [11. Documentacion](#11-documentacion)
+- [12. Integrantes del equipo](#12-integrantes-del-equipo)
+- [13. Uso de inteligencia artificial](#13-uso-de-inteligencia-artificial)
 
-La solución utiliza estructuras enlazadas propias, sin recurrir a `ArrayList`, `LinkedList`, `Stack` o `Queue` para implementar las estructuras centrales del sistema.
+---
 
-## ⚙️ Funcionalidades principales
+## 1. Descripcion general
 
-### 1. Gestión de departamentos
+La gestión de la carga docente requiere organizar la información de los departamentos, los profesores que pertenecen a ellos y las asignaturas que imparte cada profesor.
 
-Permite:
-- Crear nuevos departamentos.
+Este proyecto implementa una solución que permite mantener esa información relacionada y realizar operaciones sobre sus elementos. Además, incorpora dos estructuras auxiliares para gestionar el historial de modificaciones y las solicitudes de actualización.
+
+El sistema está desarrollado en **Java**, utilizando estructuras enlazadas implementadas por el equipo. Las estructuras centrales no dependen de las clases `ArrayList`, `LinkedList`, `Stack` ni `Queue` de Java.
+
+## 2. Objetivos del proyecto
+
+El objetivo principal es aplicar los conocimientos de estructuras de datos mediante la implementación de un sistema de gestión académica.
+
+Los objetivos específicos son:
+
+- Organizar departamentos, profesores y asignaturas mediante una estructura jerárquica.
+- Implementar operaciones de inserción, búsqueda, listado, actualización y eliminación.
+- Mantener un historial de modificaciones mediante una pila LIFO.
+- Gestionar solicitudes de actualización mediante una cola FIFO.
+- Utilizar recorridos recursivos para calcular la cantidad de profesores destacados.
+- Validar los datos y controlar los errores mediante excepciones personalizadas.
+
+## 3. Funcionalidades principales
+
+El sistema permite realizar las siguientes operaciones:
+
+### Gestión de departamentos
+
+- Crear departamentos.
 - Buscar departamentos por nombre.
 - Listar los departamentos registrados.
 - Eliminar departamentos.
-- Consultar la cantidad total de departamentos.
-- Contar los profesores destacados de todos los departamentos.
+- Consultar la cantidad de departamentos.
 
-### 2. Gestión de profesores
+### Gestión de profesores
 
-Cada profesor pertenece a un departamento y almacena los siguientes datos:
+Cada profesor almacena los siguientes datos:
 
-| Atributo | Descripción |
-|---|---|
-| Nombre | Identificación del profesor. |
-| Categoría docente | Categoría académica del profesor. |
-| Grado científico | Grado científico alcanzado. |
-| Edad | Edad del profesor. |
-| Evaluación | Evaluación comprendida entre 0 y 100. |
-| Asignaturas | Asignaturas impartidas por el profesor. |
-
-Operaciones disponibles:
-- Registrar profesores.
-- Buscar profesores dentro de un departamento.
-- Listar profesores.
-- Eliminar profesores.
-- Actualizar categoría docente, grado científico, edad y evaluación.
-- Consultar las horas docentes acumuladas.
-- Identificar profesores destacados.
-
-### 3. Gestión de asignaturas
-
-Cada profesor tiene asociada una lista de asignaturas.
-
-Cada asignatura almacena:
-- Nombre de la asignatura.
-- Cantidad de horas docentes.
+- Nombre.
+- Categoría docente.
+- Grado científico.
+- Edad.
+- Evaluación.
 
 El sistema permite:
-- Registrar asignaturas.
+
+- Agregar profesores a un departamento.
+- Buscar profesores.
+- Listar profesores.
+- Eliminar profesores.
+- Actualizar sus datos.
+- Consultar la cantidad de profesores.
+- Calcular sus horas docentes a partir de las asignaturas asociadas.
+
+### Gestión de asignaturas
+
+Cada asignatura contiene:
+
+- Nombre.
+- Cantidad de horas.
+
+El sistema permite:
+
+- Agregar asignaturas a un profesor.
 - Buscar asignaturas.
-- Listar las asignaturas de un profesor.
+- Listar asignaturas.
+- Actualizar las horas de una asignatura.
 - Eliminar asignaturas.
-- Actualizar las horas asignadas.
 - Calcular el total de horas docentes de un profesor.
 
-### 4. Historial de modificaciones
+### Historial de modificaciones
 
-El sistema incorpora un mecanismo para registrar y deshacer las modificaciones realizadas sobre los datos docentes.
+El sistema registra modificaciones sobre los datos de los profesores y las horas de sus asignaturas. También permite consultar el historial y deshacer la última modificación registrada.
 
-Cada registro almacena:
-- Número de operación.
+### Solicitudes de actualización
+
+Permite registrar solicitudes para modificar datos de profesores o las horas de sus asignaturas. Las solicitudes se procesan en el orden en que fueron incorporadas a la cola.
+
+## 4. Arquitectura y modelo de datos
+
+La información principal del sistema se organiza mediante una estructura jerárquica de tres niveles:
+
+**Departamento → Profesor → Asignatura**
+
+Cada departamento contiene una lista de profesores y cada profesor contiene una lista de asignaturas.
+
+### Diagrama de la estructura principal
+
+```mermaid
+flowchart TD
+    A["ListaDepartamentos"] --> B["Departamento"]
+    B --> C["ListaProfesores"]
+    C --> D["Profesor"]
+    D --> E["ListaAsignaturas"]
+    E --> F["Asignatura"]
+```
+
+### Organización de los elementos
+
+- Los departamentos se agregan en el orden de creación.
+- Los profesores se insertan en orden alfabético.
+- Las asignaturas se insertan en orden alfabético.
+- Los nombres identifican de forma única los elementos dentro de su nivel correspondiente.
+
+### Componentes principales
+
+| Componente | Responsabilidad |
+|---|---|
+| `SistemaGestionAcademica` | Coordina las operaciones generales del sistema. |
+| `ListaDepartamentos` | Administra la lista de departamentos. |
+| `ListaProfesores` | Administra los profesores de cada departamento. |
+| `ListaAsignaturas` | Administra las asignaturas de cada profesor. |
+| `PilaHistorial` | Mantiene el historial de modificaciones. |
+| `ColaSolicitudes` | Gestiona las solicitudes de actualización. |
+| `Profesor` | Representa los datos de un profesor y sus asignaturas. |
+| `Departamento` | Representa un departamento y sus profesores. |
+| `Asignatura` | Representa una asignatura y su cantidad de horas. |
+
+## 5. Estructuras de datos
+
+El proyecto utiliza tres estructuras principales: una multilista para organizar la información académica, una pila para almacenar el historial y una cola para procesar solicitudes.
+
+### 5.1. Multilista de departamentos, profesores y asignaturas
+
+La estructura principal está formada por listas enlazadas relacionadas jerárquicamente:
+
+```text
+ListaDepartamentos
+└── Departamento
+    └── ListaProfesores
+        └── Profesor
+            └── ListaAsignaturas
+                └── Asignatura
+```
+
+Esta organización permite acceder a los datos siguiendo la relación entre departamentos, profesores y asignaturas.
+
+Cada nivel administra sus propios elementos y ofrece operaciones para insertar, buscar, listar y eliminar.
+
+### 5.2. Pila de historial (LIFO)
+
+La clase `PilaHistorial` implementa una pila basada en el principio **LIFO (Last In, First Out)**.
+
+Esto significa que el último cambio registrado es el primero que se consulta o se extrae de la estructura.
+
+Cada registro del historial conserva información como:
+
+- Turno del cambio.
 - Descripción de la modificación.
 - Departamento afectado.
 - Profesor afectado.
-- Asignatura afectada, cuando corresponda.
+- Asignatura, cuando corresponde.
 - Tipo de modificación.
 - Valor anterior.
 - Valor nuevo.
 
-Las modificaciones registradas incluyen:
+Se registran modificaciones relacionadas con:
+
 - Categoría docente.
 - Grado científico.
 - Edad.
 - Evaluación.
 - Horas de una asignatura.
 
-Se puede consultar el último cambio y deshacerlo, restaurando el valor anterior.
+La operación de deshacer utiliza el último registro para restaurar el valor anterior.
 
-### 5. Procesamiento de solicitudes de actualización
+```mermaid
+flowchart TD
+    A["Nueva modificación"] --> B["Crear RegistroHistorial"]
+    B --> C["push()"]
+    C --> D["PilaHistorial"]
+    D --> E["peek(): consultar último cambio"]
+    D --> F["pop(): extraer último cambio"]
+    F --> G["Restaurar valor anterior"]
+```
 
-Se implementa un sistema de solicitudes mediante una cola FIFO (*First In, First Out*).
+### 5.3. Cola de solicitudes (FIFO)
 
-Cada solicitud contiene:
-- Identificador.
-- Departamento.
-- Profesor.
-- Asignatura, cuando corresponda.
-- Tipo de actualización.
-- Nuevo valor.
-- Estado de procesamiento.
+La clase `ColaSolicitudes` implementa una cola basada en el principio **FIFO (First In, First Out)**.
 
-Las solicitudes pueden encontrarse en tres estados:
+Esto significa que la primera solicitud registrada es la primera que se procesa.
+
+Las solicitudes pueden encontrarse en los siguientes estados:
 
 | Estado | Descripción |
 |---|---|
-| `PENDIENTE` | La solicitud todavía no ha sido atendida. |
-| `PROCESADA` | La actualización se aplicó correctamente. |
-| `RECHAZADA` | No fue posible aplicar la actualización. |
+| `PENDIENTE` | La solicitud está registrada y espera a ser procesada. |
+| `PROCESADA` | La solicitud se aplicó correctamente. |
+| `RECHAZADA` | La solicitud no pudo aplicarse. |
 
-El sistema procesa las solicitudes en el orden en que fueron recibidas. Las actualizaciones aplicadas correctamente también quedan registradas en el historial, permitiendo deshacerlas posteriormente.
+Cuando una solicitud se procesa correctamente, el cambio correspondiente también queda registrado en el historial.
 
-## 🧩 Estructuras de datos implementadas
-
-Uno de los aspectos fundamentales del proyecto es la implementación manual de las estructuras de datos utilizadas para administrar la información.
-
-### 1. Multilista de departamentos, profesores y asignaturas
-
-La información se organiza jerárquicamente mediante listas simplemente enlazadas.
-
-```text
-ListaDepartamentos
-       |
-       v
-  Departamento
-       |
-       v
-  ListaProfesores
-       |
-       v
-    Profesor
-       |
-       v
-  ListaAsignaturas
-       |
-       v
-   Asignatura
+```mermaid
+flowchart TD
+    A["Registrar solicitud"] --> B["enqueue()"]
+    B --> C["ColaSolicitudes"]
+    C --> D["dequeue()"]
+    D --> E{"¿Se puede aplicar?"}
+    E -->|Sí| F["Estado: PROCESADA"]
+    F --> G["Registrar modificación en historial"]
+    E -->|No| H["Estado: RECHAZADA"]
 ```
 
-**Funcionamiento:**
+## 6. Recorrido recursivo y profesores destacados
 
-- `ListaDepartamentos`: administra los departamentos registrados.
-- `ListaProfesores`: administra los profesores pertenecientes a un departamento.
-- `ListaAsignaturas`: administra las asignaturas impartidas por cada profesor.
+El sistema utiliza recursividad para recorrer la estructura jerárquica y determinar cuántos profesores cumplen la condición de profesor destacado.
 
-Cada lista utiliza nodos enlazados mediante referencias al siguiente elemento.
-
-**Reglas de organización:**
-
-- Los departamentos se insertan al final de la lista, respetando el orden de creación.
-- Los profesores se insertan alfabéticamente.
-- Las asignaturas se insertan alfabéticamente.
-- No se permiten elementos duplicados dentro de un mismo nivel.
-- Las búsquedas y operaciones de recorrido se implementan mediante métodos recursivos.
-
-### 2. Pila de historial (LIFO)
-
-La clase `PilaHistorial` implementa una pila mediante nodos enlazados.
-
-Sigue el principio LIFO (*Last In, First Out*): el último registro añadido es el primero que se recupera.
-
-Operaciones principales:
-
-| Operación | Descripción |
-|---|---|
-| `push()` | Inserta un nuevo registro en la cima. |
-| `pop()` | Extrae el registro situado en la cima. |
-| `peek()` | Consulta el último registro sin eliminarlo. |
-| `listar()` | Muestra los registros del historial. |
-
-Esta estructura permite implementar el mecanismo para deshacer la última modificación.
-
-### 3. Cola de solicitudes (FIFO)
-
-La clase `ColaSolicitudes` implementa una cola mediante nodos enlazados.
-
-Sigue el principio FIFO (*First In, First Out*): la primera solicitud registrada es la primera que se procesa.
-
-La estructura mantiene referencias al frente y al fondo de la cola.
-
-Operaciones principales:
-
-| Operación | Descripción |
-|---|---|
-| `enqueue()` | Añade una solicitud al final. |
-| `dequeue()` | Extrae la solicitud situada al frente. |
-| `peek()` | Consulta la siguiente solicitud sin extraerla. |
-| `listar()` | Muestra las solicitudes pendientes. |
-
-Esta estructura garantiza el procesamiento ordenado de las solicitudes de actualización.
-
-## 🔄 Conteo recursivo de profesores destacados
-
-El sistema incluye un algoritmo recursivo para identificar y contabilizar profesores destacados.
-
-**Criterio de clasificación:**
-
-Un profesor se considera destacado cuando la suma de las horas de todas sus asignaturas es estrictamente mayor que 120.
-
-```java
-profesor.getTotalHoras() > 120
-```
+Un profesor se considera **destacado cuando la suma de las horas de todas sus asignaturas es estrictamente mayor que 120**.
 
 Por tanto:
-- 100 horas: no destacado.
-- 120 horas: no destacado.
-- 121 horas: destacado.
-- 150 horas: destacado.
 
-**Funcionamiento del algoritmo:**
+| Total de horas | ¿Es destacado? |
+|---:|---|
+| 100 | No |
+| 120 | No |
+| 121 | Sí |
+| 130 | Sí |
 
-1. La lista de departamentos se recorre recursivamente.
-2. Para cada departamento se recorre su lista de profesores.
-3. Cada profesor calcula recursivamente la suma de las horas de sus asignaturas.
-4. Se contabilizan los profesores cuya carga docente supera las 120 horas.
-5. Los resultados parciales se acumulan hasta obtener el total general.
+El recorrido recursivo se realiza en los siguientes niveles:
 
-Este algoritmo permite demostrar la aplicación de recursividad sobre estructuras enlazadas de diferentes niveles.
+1. La lista de departamentos recorre sus departamentos.
+2. Cada departamento recorre su lista de profesores.
+3. Cada profesor recorre sus asignaturas para calcular el total de horas.
+4. Se determina si el profesor cumple la condición de destacado.
 
-## 🛡️ Validaciones y manejo de excepciones
+```mermaid
+flowchart TD
+    A["Iniciar conteo"] --> B["Recorrer departamentos"]
+    B --> C["Recorrer profesores de cada departamento"]
+    C --> D["Sumar horas de las asignaturas"]
+    D --> E{"¿Total de horas > 120?"}
+    E -->|Sí| F["Incrementar contador"]
+    E -->|No| G["Mantener contador"]
+    F --> H["Continuar recorrido"]
+    G --> H
+    H --> I{"¿Quedan elementos?"}
+    I -->|Sí| B
+    I -->|No| J["Devolver total de profesores destacados"]
+```
 
-El sistema incorpora excepciones personalizadas para controlar operaciones inválidas y mantener la consistencia de los datos.
+La comparación es estrictamente `> 120`, por lo que un profesor con exactamente 120 horas no se considera destacado.
 
-Entre las situaciones controladas se encuentran:
+## 7. Validaciones y manejo de excepciones
 
-- Intentar registrar elementos nulos.
-- Introducir nombres vacíos.
-- Registrar elementos duplicados.
-- Buscar elementos inexistentes.
-- Introducir horas de asignaturas menores o iguales a cero.
-- Asignar evaluaciones fuera del intervalo de 0 a 100.
-- Registrar edades negativas.
-- Intentar consultar o extraer elementos de estructuras vacías.
-- Intentar procesar solicitudes que no pueden aplicarse.
+El sistema incorpora validaciones para evitar datos incorrectos y controlar situaciones en las que una operación no puede realizarse.
 
-Las excepciones personalizadas permiten diferenciar los errores de validación, duplicidad, búsqueda y acceso a estructuras vacías.
+Se utilizan excepciones personalizadas para representar diferentes tipos de errores.
 
-## 📁 Organización del proyecto
+| Excepción | Situación en la que se utiliza |
+|---|---|
+| `DatoInvalidoException` | Cuando se proporciona un dato nulo, vacío o que no cumple las condiciones establecidas. |
+| `ElementoDuplicadoException` | Cuando se intenta insertar un elemento que ya existe en su nivel correspondiente. |
+| `ElementoNoEncontradoException` | Cuando se intenta buscar, actualizar o eliminar un elemento inexistente. |
+| `EstructuraVaciaException` | Cuando se intenta consultar o extraer un elemento de una estructura vacía. |
+
+### Validaciones principales
+
+- Los nombres no pueden estar vacíos.
+- No se admiten elementos nulos en las operaciones de inserción.
+- No se permiten nombres duplicados dentro del mismo nivel.
+- Las asignaturas deben tener una cantidad de horas positiva.
+- La edad no puede ser negativa.
+- La evaluación debe encontrarse entre 0 y 100.
+- Las solicitudes deben contener los datos necesarios según el tipo de modificación.
+- No se puede procesar una cola vacía.
+- No se puede extraer ni consultar el elemento superior de una pila vacía.
+
+Estas validaciones permiten mantener la coherencia de la información y controlar los errores durante la ejecución.
+
+## 8. Pruebas manuales
+
+El archivo `Main.java` contiene pruebas manuales para comprobar el comportamiento de las estructuras y las operaciones del sistema.
+
+Las pruebas están organizadas en los siguientes grupos:
+
+| Grupo de pruebas | Casos contemplados |
+|---|---|
+| Asignaturas | Inserción válida, duplicados, horas inválidas, búsqueda, actualización y eliminación. |
+| Profesores | Creación, validación de datos, duplicados, búsqueda, actualización, eliminación y orden alfabético. |
+| Departamentos | Creación, búsqueda, duplicados, eliminación y asociación de profesores. |
+| Pila de historial | Inserción de registros, consulta, extracción, pila vacía y orden LIFO. |
+| Cola de solicitudes | Inserción, consulta, extracción, cola vacía, validación de solicitudes y orden FIFO. |
+| Sistema integrado | Operaciones combinadas, actualización de datos, historial, deshacer modificaciones y procesamiento de solicitudes. |
+
+### Casos importantes comprobados por el código de pruebas
+
+- Intentar insertar elementos duplicados.
+- Intentar insertar datos nulos o vacíos.
+- Introducir horas negativas o iguales a cero en una asignatura.
+- Introducir evaluaciones fuera del intervalo permitido.
+- Buscar elementos que no existen.
+- Eliminar elementos inexistentes.
+- Consultar o extraer elementos de una pila vacía.
+- Consultar o extraer elementos de una cola vacía.
+- Verificar el orden LIFO de la pila.
+- Verificar el procesamiento de solicitudes y sus estados.
+- Verificar que una solicitud rechazada no genere una modificación en el historial.
+- Actualizar las horas de una asignatura y deshacer el cambio.
+- Verificar el conteo de profesores destacados antes y después de modificar sus horas.
+
+### Resultado de las pruebas
+
+Al ejecutar `Main.java`, el programa informa:
+
+- Cantidad de pruebas exitosas.
+- Cantidad de pruebas fallidas.
+
+
+## 9. Estructura del repositorio
+
+El proyecto está organizado de la siguiente manera:
 
 ```text
 Parcial-2/
+│
+├── documentación/
+│   └── Presentación.pptx
+│   ├── Documentacion.pdf
+│   ├── Cola_Explicada_Linea_por_Linea.html
+│   ├── Pila_Explicada_Linea_por_Linea.html
+│   ├── Multilista_Explicada_Linea_por_Linea.html
+│   └── Recursividad_Explicada_Linea_por_Linea.html
 │
 ├── src/
 │   └── com/
 │       └── equipo1/
 │           └── gestionacademica/
-│               │
 │               ├── Main.java
 │               ├── SistemaGestionAcademica.java
-│               │
 │               ├── estructuras/
-│               │   ├── ListaDepartamentos.java
-│               │   ├── ListaProfesores.java
-│               │   ├── ListaAsignaturas.java
-│               │   ├── PilaHistorial.java
-│               │   ├── ColaSolicitudes.java
-│               │   └── Nodos auxiliares
-│               │
 │               ├── modelo/
-│               │   ├── Departamento.java
-│               │   ├── Profesor.java
-│               │   ├── Asignatura.java
-│               │   ├── RegistroHistorial.java
-│               │   └── SolicitudActualizacion.java
-│               │
 │               └── excepciones/
-│                   └── Excepciones personalizadas
-│
-├── documentación/
-│   └── Presentación del proyecto
 │
 └── README.md
 ```
 
-### Responsabilidad de las clases principales
+### Descripción de los directorios
 
-| Clase | Responsabilidad |
+| Directorio o archivo | Contenido |
 |---|---|
-| `Main` | Punto de entrada y ejecución de las pruebas. |
-| `SistemaGestionAcademica` | Coordina las operaciones generales del sistema. |
-| `Departamento` | Representa un departamento académico. |
-| `Profesor` | Representa un profesor y administra sus asignaturas. |
-| `Asignatura` | Representa una asignatura y sus horas docentes. |
-| `RegistroHistorial` | Almacena información de las modificaciones. |
-| `SolicitudActualizacion` | Representa una solicitud de actualización. |
+| `documentación/` | Material de documentación y presentación del proyecto. |
+| `src/` | Código fuente de la aplicación. |
+| `estructuras/` | Implementaciones de las estructuras de datos utilizadas. |
+| `modelo/` | Clases que representan las entidades y registros del sistema. |
+| `excepciones/` | Excepciones personalizadas para el control de errores. |
+| `Main.java` | Punto de entrada y pruebas manuales del proyecto. |
+| `README.md` | Documentación general del proyecto. |
 
-## 🧪 Pruebas del sistema
+## 10. Requisitos y ejecucion
 
-El proyecto incluye un conjunto de pruebas implementadas en `Main.java`, organizadas en diferentes grupos:
-
-- Pruebas de asignaturas.
-- Pruebas de profesores.
-- Pruebas de departamentos.
-- Pruebas de la pila de historial.
-- Pruebas de la cola de solicitudes.
-- Pruebas integradas del sistema.
-
-Se comprueban tanto operaciones correctas como situaciones excepcionales, incluyendo:
-- Inserciones y eliminaciones.
-- Búsquedas existentes e inexistentes.
-- Elementos duplicados.
-- Datos inválidos.
-- Estructuras vacías.
-- Actualizaciones y recuperación de valores anteriores.
-- Procesamiento y rechazo de solicitudes.
-- Conteo de profesores destacados.
-
-Al finalizar, el programa muestra un resumen con la cantidad de pruebas exitosas y fallidas.
-
-## 💻 Requisitos
+### Requisitos
 
 Para compilar y ejecutar el proyecto se necesita:
 
-- JDK 8 o superior.
-- Terminal o consola de comandos.
-- Un editor o entorno de desarrollo Java (IntelliJ IDEA, Eclipse, NetBeans o similar).
+- Tener instalado el JDK de Java.
+- Disponer de los comandos `javac` y `java` en el `PATH`.
+- Clonar o descargar el repositorio.
 
-No se requieren bibliotecas externas.
-
-## 🚀 Compilación y ejecución
-
-Clonar el repositorio:
+### Obtener el proyecto
 
 ```bash
 git clone https://github.com/RelaxUniver/Parcial-2.git
-```
-
-Entrar en el directorio:
-
-```bash
 cd Parcial-2
 ```
 
-### Linux / macOS (Bash)
+### Compilar y ejecutar en Linux o macOS
+
+Desde la raíz del proyecto:
 
 ```bash
 mkdir -p out
@@ -335,34 +396,47 @@ javac -encoding UTF-8 -d out $(find src -name '*.java')
 java -cp out com.equipo1.gestionacademica.Main
 ```
 
-### Windows (PowerShell)
+### Compilar y ejecutar en Windows PowerShell
+
+Desde la raíz del proyecto:
 
 ```powershell
 New-Item -ItemType Directory -Force out | Out-Null
-
 $sources = Get-ChildItem -Recurse src -Filter *.java | ForEach-Object FullName
-
 javac -encoding UTF-8 -d out $sources
-
 java -cp out com.equipo1.gestionacademica.Main
 ```
 
-Al ejecutar el programa se realizarán las pruebas implementadas y se mostrará el resumen de resultados.
+Al ejecutar el programa se iniciarán las pruebas manuales y se mostrará el resumen de resultados en la consola.
 
-## 📊 Presentación
+## 11. Documentacion
 
-[Consultar la presentación del proyecto](documentación/Presentacíon.pptx)
+Los materiales relacionados con el proyecto se encuentran en el directorio de documentación y en el código fuente del repositorio.
 
-## 👥 Integrantes del equipo
+| Recurso | Enlace |
+|---|---|
+| Carpeta de documentación | [Abrir documentación](documentación/) |
+| Presentación del proyecto | [Abrir presentación](documentación/Presentación.pptx) |
+| Código fuente principal | [Explorar código fuente](src/com/equipo1/gestionacademica/) |
+| Estructuras de datos | [Explorar estructuras](src/com/equipo1/gestionacademica/estructuras/) |
+| Modelo de datos | [Explorar modelo](src/com/equipo1/gestionacademica/modelo/) |
+| Excepciones | [Explorar excepciones](src/com/equipo1/gestionacademica/excepciones/) |
+| Pruebas manuales | [Consultar Main.java](src/com/equipo1/gestionacademica/Main.java) |
 
-**Equipo 1 — Estructuras de Datos**
+## 12. Integrantes del equipo
 
-- Yaisel Pinos Durán
-- Merlyn Sosa Borges
-- Geonel Sánchez
-- Jorge Luis Reyes Pérez
-- Ray Sanjudo Mesa
+| Integrante | Perfil de GitHub |
+|---|---|
+| Yaisel Pinos Durán | [@RelaxUniver](https://github.com/RelaxUniver) |
+| Merlyn Sosa Borges | [@m3rlynn](https://github.com/m3rlynn) |
+| Geonel Sánchez | [@GeoDev-2006](https://github.com/GeoDev-2006) |
+| Jorge Luis Reyes Pérez | [@jorgeluisreyes331-cloud](https://github.com/jorgeluisreyes331-cloud) |
+| Ray Sanjudo Mesa | [@raysanjudo2006-netizen](https://github.com/raysanjudo2006-netizen) |
 
-## 🤖 Declaración sobre el uso de IA
+## 13. Uso de inteligencia artificial
 
-La IA se utilizó solo como apoyo para escribir más rápido código, pruebas y documentación. No se utilizó para pensar la solución ni para tomar las decisiones principales. El diseño, el análisis y la comprensión del proyecto fueron realizados por el equipo.
+La inteligencia artificial se utilizó como herramienta de apoyo para agilizar tareas relacionadas con la escritura de código, la elaboración de pruebas y la documentación del proyecto.
+
+No se utilizó para sustituir el razonamiento del equipo ni para tomar las decisiones principales sobre el diseño y la solución del problema.
+
+El análisis, el diseño de las estructuras, la comprensión del funcionamiento y las decisiones fundamentales del proyecto fueron responsabilidad de los integrantes del equipo.
