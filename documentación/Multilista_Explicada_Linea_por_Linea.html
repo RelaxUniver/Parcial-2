@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Guía interactiva: Multilista línea por línea</title>
+    <title>Guía interactiva: Multilista (Departamento → Profesor → Asignatura) línea por línea</title>
     <style>
         :root {
             --bg-color: #f8f9fa;
@@ -466,6 +466,44 @@
         @media (max-width: 1000px) { body.is-fullscreen .panel { height: auto; } }
             .node-data { font-size: .9rem; padding: 10px 4px; overflow-wrap: break-word; hyphens: manual; }
             .int-tags { align-items: flex-start; }
+
+        /* ---------- Multilista real: departamento -> profesor -> asignatura ---------- */
+        .legend-asig { background: #eafaf1; border: 2px solid #27ae60; }
+        .multilist-inner { align-items: flex-start; }
+        .ml-root { display: flex; flex-direction: column; width: max-content; min-width: 100%; }
+        .ml-dept { display: flex; align-items: flex-start; padding-bottom: 4px; }
+        .ml-dept.detached { opacity: .6; }
+        .ml-dcol { position: relative; display: flex; flex-direction: column; width: calc(var(--node-w) + 44px); flex-shrink: 0; align-self: stretch; }
+        .ml-tags { height: 46px; width: var(--node-w); display: flex; flex-wrap: wrap; align-content: flex-end; gap: 3px 4px; padding-bottom: 4px; }
+        .ml-root .node { height: 56px; }
+        .ml-root .node.small { height: 44px; }
+        .ml-root .node-data { padding: 4px 4px; display: flex; flex-direction: column; justify-content: center; }
+        .nd-name { font-weight: 700; font-size: .92rem; line-height: 1.15; overflow-wrap: anywhere; }
+        .nd-meta { font-size: .68rem; font-weight: 600; color: #5d6d7e; margin-top: 2px; }
+        .node-asig { border: 3px solid #27ae60; background: #eafaf1; }
+        .node-asig .node-data { border-color: #27ae60; }
+        .node-asig .node-pointer { background: #d5f5e3; }
+        .ml-vline { flex: 1; min-height: 18px; width: 2px; margin-left: calc(var(--node-w) / 2 - 1px); position: relative; }
+        .ml-vline.has-next { background: var(--arrow-color); }
+        .ml-vline.has-next::after { content: ''; position: absolute; bottom: -1px; left: -4px; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 6px solid var(--arrow-color); }
+        .ml-harrow-first, .ml-harrow { position: absolute; top: calc(46px + 28px); height: 2px; background: var(--arrow-color); z-index: 5; }
+        .ml-harrow-first { left: var(--node-w); width: 44px; }
+        .ml-harrow { left: var(--node-w); width: 110px; }
+        .ml-harrow-first::after, .ml-harrow::after { content: ''; position: absolute; right: -1px; top: -4px; border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-left: 6px solid var(--arrow-color); }
+        .ml-chain { display: flex; align-items: flex-start; }
+        .ml-pcol { position: relative; display: flex; flex-direction: column; width: calc(var(--node-w) + 110px); flex-shrink: 0; }
+        .ml-pcol.detached { opacity: .6; }
+        .ml-asigs { display: flex; flex-direction: column; }
+        .arrow-vertical.ghost { background: transparent; margin-top: 4px; }
+        .arrow-vertical.ghost::after { display: none; }
+        .ml-arow { display: flex; align-items: center; }
+        .ml-arow.detached { opacity: .6; }
+        .ml-atags { width: 110px; padding-left: 8px; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
+        .guide-rules { margin-top: 10px; display: flex; flex-direction: column; gap: 5px; }
+        .guide-rules:empty { display: none; }
+        .guide-rule { padding: 6px 9px; border-radius: 6px; background: #eef7ee; border-left: 3px solid #2ecc71; color: #2d5a3a; font-size: .78rem; line-height: 1.4; overflow-wrap: anywhere; }
+        .guide-rule b { color: #1e7a45; }
+        #inputs-container { flex-wrap: wrap; }
     </style>
 </head>
 <body>
@@ -474,7 +512,7 @@
     <div class="panel code-panel">
         <div class="code-header">
             <div class="code-title">
-                <span>Multilista.java · guía línea por línea</span>
+                <span>SistemaGestionAcademica.java · guía línea por línea</span>
                 <span id="method-title" style="font-size:.9em;color:#e5c07b;"></span>
             </div>
             <div class="tools" role="group" aria-label="Tamaño del código">
@@ -490,7 +528,7 @@
     <!-- Panel Visual -->
     <div class="panel visual-panel">
         <div class="visual-top">
-            <div class="visual-header">Estado actual de la Multilista</div>
+            <div class="visual-header">Multilista del sistema: departamentos → profesores → asignaturas</div>
             <div class="tools visual-tools" role="group" aria-label="Tamaño de la representación">
                 <span class="tool-title">Visual</span>
                 <button type="button" class="tool" id="visual-minus" onclick="changeZoom('visual', -1)" title="Reducir representación" aria-label="Reducir tamaño de la representación">−</button>
@@ -499,10 +537,11 @@
                 <button type="button" class="tool" id="btn-fullscreen" onclick="toggleFullscreen()" title="Pantalla completa" aria-label="Pantalla completa">⛶</button>
             </div>
         </div>
-        <p style="margin: 0 0 12px; text-align:center; color:#718096; font-size:.78rem;">Se explican únicamente operaciones iterativas sobre nodos externos e internos; no se incluyen métodos de recursividad, cola ni pila.</p>
+        <p style="margin: 0 0 12px; text-align:center; color:#718096; font-size:.78rem;">Es tu código real: ListaDepartamentos (nodos externos) → ListaProfesores de cada departamento → ListaAsignaturas de cada profesor. La simulación incluye validaciones y excepciones.</p>
         <div class="legend" aria-label="Leyenda de la representación">
-            <span class="legend-item"><i class="legend-swatch legend-ext"></i>Nodo externo</span>
-            <span class="legend-item"><i class="legend-swatch legend-int"></i>Nodo interno</span>
+            <span class="legend-item"><i class="legend-swatch legend-ext"></i>Departamento</span>
+            <span class="legend-item"><i class="legend-swatch legend-int"></i>Profesor</span>
+            <span class="legend-item"><i class="legend-swatch legend-asig"></i>Asignatura</span>
             <span class="legend-item"><i class="legend-arrow"></i>Enlace siguiente</span>
         </div>
 
@@ -518,7 +557,8 @@
             </div>
             <code class="guide-code" id="guide-code" hidden></code>
             <p class="guide-text" id="guide-text">Selecciona un método y haz clic sobre cualquiera de sus líneas para conocer qué hace. También puedes iniciar la simulación y avanzar paso a paso.</p>
-            <div class="guide-hint">Consejo: las llaves y las líneas de cierre también se pueden seleccionar, aunque no siempre representan una operación independiente en la simulación.</div>
+            <div class="guide-rules" id="guide-rules"></div>
+            <div class="guide-hint">Verde: regla de negocio (RN), requerimiento funcional (RF) o no funcional (RNF) que cumple la línea. Consejo: las llaves y las líneas de cierre también se pueden seleccionar, aunque no siempre representan una operación independiente en la simulación.</div>
         </section>
 
         <div class="status-message" id="status-msg">Elige un método. Haz clic en una línea para leer su explicación o inicia la simulación.</div>
@@ -526,14 +566,18 @@
         <div class="controls">
             <div class="control-row">
                 <select id="method-select" onchange="changeMethod()">
-                    <option value="agregarNodoExterno">agregarNodoExterno(String dato)</option>
-                    <option value="agregarNodoInterno">agregarNodoInterno(String datoExterno, String datoInterno)</option>
-                    <option value="obtenerListaInterna">obtenerListaInterna(String datoExterno)</option>
-                    <option value="actualizarNodoExterno">actualizarNodoExterno(String datoViejo, String datoNuevo)</option>
-                    <option value="actualizarNodoInterno">actualizarNodoInterno(String datoExterno, String datoViejo, String datoNuevo)</option>
-                    <option value="eliminarNodoExterno">eliminarNodoExterno(String dato)</option>
-                    <option value="eliminarNodoInterno">eliminarNodoInterno(String datoExterno, String datoInterno)</option>
-                    <option value="imprimir">imprimir()</option>
+                    <option value="crearDepartamento">crearDepartamento(String nombre)</option>
+                    <option value="crearProfesor">crearProfesor(departamento, profesor, categoría, grado, edad, evaluación)</option>
+                    <option value="crearAsignatura">crearAsignatura(departamento, profesor, asignatura, horas)</option>
+                    <option value="buscarProfesor">buscarProfesor(departamento, profesor)</option>
+                    <option value="buscarAsignatura">buscarAsignatura(departamento, profesor, asignatura)</option>
+                    <option value="eliminarDepartamento">eliminarDepartamento(departamento)</option>
+                    <option value="eliminarProfesor">eliminarProfesor(departamento, profesor)</option>
+                    <option value="eliminarAsignatura">eliminarAsignatura(departamento, profesor, asignatura)</option>
+                    <option value="actualizarHorasAsignaturaInterno">actualizarHorasAsignaturaInterno(…, nuevasHoras)</option>
+                    <option value="listarProfesores">listarProfesores(departamento)</option>
+                    <option value="listarAsignaturas">listarAsignaturas(departamento, profesor)</option>
+                    <option value="contarProfesoresDestacados">contarProfesoresDestacados()</option>
                 </select>
             </div>
             <div class="control-row" id="inputs-container"></div>
@@ -544,7 +588,7 @@
             </div>
             <div class="control-row">
                 <button class="btn-reset" onclick="resetLab()">Reiniciar ejemplo</button>
-                <button class="btn-clear" onclick="emptyList()">Vaciar multilista</button>
+                <button class="btn-clear" onclick="emptyList()">Vaciar sistema</button>
             </div>
         </div>
 
@@ -558,669 +602,797 @@
     </div>
 
 <script>
-    // ================== Modelo de datos ==================
-    // La multilista PERSISTE entre ejecuciones de métodos.
-    // Nodos con linked === false están creados pero aún no enlazados.
-    // Nodos con removed === true están desconectados (se descartan al terminar el método).
+    // ================== Modelo de datos (tu proyecto real) ==================
+    // ListaDepartamentos -> Departamento.profesores (ListaProfesores) -> Profesor.asignaturas (ListaAsignaturas)
+    // Cada lista tiene "items" (nodos ya enlazados) y "det" (nodos creados pero aún sin enlazar o ya desconectados).
     let uidCounter = 1;
     const uid = () => uidCounter++;
+    const mkList = () => ({ items: [], det: [] });
+    const mkAsig = (name, horas) => ({ id: uid(), name, horas });
+    const mkProf = (name, cat, grado, edad, ev, asigs = []) => {
+        const p = { id: uid(), name, cat, grado, edad, ev, asigs: mkList() };
+        p.asigs.items = asigs;
+        return p;
+    };
+    const mkDept = (name, profs = []) => {
+        const d = { id: uid(), name, profs: mkList() };
+        d.profs.items = profs;
+        return d;
+    };
 
     function sampleData() {
-        const c = name => ({ id: uid(), name });
-        return [
-            { id: uid(), name: 'Juan',  courses: [c('Matemáticas'), c('Física')] },
-            { id: uid(), name: 'María', courses: [c('Química')] },
-            { id: uid(), name: 'Pedro', courses: [c('Historia'), c('Literatura')] }
+        const l = mkList();
+        l.items = [
+            mkDept('Ciencias', [
+                mkProf('Ana', 'Titular', 'Doctor', 45, 92, [mkAsig('Calculo', 60), mkAsig('Fisica', 90)]),
+                mkProf('Bruno', 'Auxiliar', 'Master', 38, 85, [mkAsig('Quimica', 120)])
+            ]),
+            mkDept('Ingenieria', [
+                mkProf('Carla', 'Titular', 'Doctor', 41, 95, [mkAsig('Estructuras', 70), mkAsig('Programacion', 55)]),
+                mkProf('Diego', 'Asistente', 'Master', 33, 80, [mkAsig('Redes', 90)])
+            ]),
+            mkDept('Humanidades', [
+                mkProf('Elena', 'Auxiliar', 'Master', 50, 88, [mkAsig('Historia', 80)])
+            ])
         ];
+        return l;
     }
-    let data = sampleData();
+    let deps = sampleData();
+    let contadorOperaciones = 0;   // como en el sistema real: nunca disminuye
 
-    const isLinked = n => n.linked !== false && !n.removed;
-    const extChain = () => data.filter(isLinked);
-    const intChain = e => e.courses.filter(isLinked);
+    const horasProf = p => p.asigs.items.reduce((s, a) => s + a.horas, 0);
+    const profToString = p => p.name + ' | ' + p.cat + ' | ' + p.grado + ' | Edad: ' + p.edad + ' | Evaluación: ' + p.ev + ' | Horas: ' + horasProf(p);
+    const asigToString = a => a.name + ' (' + a.horas + ' horas)';
+
+    function purge(l) {
+        l.det = [];
+        l.items.forEach(d => {
+            if (d.profs) { purge(d.profs); d.profs.items.forEach(p => purge(p.asigs)); }
+        });
+    }
+
+    // Comparación igual que String.compareToIgnoreCase / equalsIgnoreCase de Java
+    function cmpIC(a, b) {
+        const n = Math.min(a.length, b.length);
+        for (let i = 0; i < n; i++) {
+            let c1 = a[i], c2 = b[i];
+            if (c1 !== c2) {
+                c1 = c1.toUpperCase(); c2 = c2.toUpperCase();
+                if (c1 !== c2) {
+                    c1 = c1.toLowerCase(); c2 = c2.toLowerCase();
+                    if (c1 !== c2) return c1.charCodeAt(0) - c2.charCodeAt(0);
+                }
+            }
+        }
+        return a.length - b.length;
+    }
+    const eqIC = (a, b) => a.length === b.length && cmpIC(a, b) === 0;
 
     // ================== Consola ==================
     let consoleText = '';
     const consoleEl = document.getElementById('console-out');
-    function refreshConsole() {
-        consoleEl.textContent = consoleText;
-        consoleEl.scrollTop = consoleEl.scrollHeight;
-    }
+    function refreshConsole() { consoleEl.textContent = consoleText; consoleEl.scrollTop = consoleEl.scrollHeight; }
     function print(s) { consoleText += s; refreshConsole(); }
     function println(s) { consoleText += s + '\n'; refreshConsole(); }
     function clearConsole() { consoleText = ''; refreshConsole(); }
 
     // ================== Helpers de pasos ==================
-    const E = (n, label) => n ? { kind: 'ext', id: n.id, label } : null;
-    const I = (n, label) => n ? { kind: 'int', id: n.id, label } : null;
-    function S(line, msg, ptrs = [], apply = null) {
-        return { line, msg, ptrs: ptrs.filter(Boolean), apply };
-    }
-    const fmtList = ic => ic.length ? ic.map(c => c.name).join(' -> ') + ' -> null' : 'null';
+    const S = (line, msg, ptrs = [], apply = null, err = false) => ({ line, msg, ptrs: ptrs.filter(Boolean), apply, err });
+    const P = (n, label) => n ? { id: n.id, label } : null;
+    const q = s => '«' + s + '»';
 
-    // ================== Métodos: código + plan de pasos ==================
+    function fail(st, line, ptrs, type, msg) {
+        st.push(S(line, '💥 ' + type + ': ' + q(msg) + '. La excepción se propaga: el método termina y la multilista queda sin cambios (RNF-20).',
+            ptrs, () => println('Excepción ' + type + ': ' + msg), true));
+    }
+
+    // validarNombre(): trim() y rechazo de nulos/vacíos
+    function vname(st, line, raw, errMsg) {
+        const t = (raw == null ? '' : raw).trim();
+        if (t === '') { fail(st, line, [], 'DatoInvalidoException', errMsg || 'El nombre no puede ser vacío.'); return null; }
+        st.push(S(line, 'validarNombre(' + q(raw) + '): trim() → ' + q(t) + '. No es vacío, se continúa.'));
+        return t;
+    }
+
+    // buscarRec(): recorre una lista y devuelve el nodo o null
+    function find(st, line, lst, name, base = []) {
+        for (const it of lst.items) {
+            const eq = eqIC(it.name, name);
+            st.push(S(line, 'buscarRec(nodo=' + it.name + '): ' + q(it.name) + '.equalsIgnoreCase(' + q(name) + ') → ' + eq + '.' +
+                (eq ? ' Coincide: se devuelve este nodo.' : ' No coincide: llamada recursiva con el siguiente.'), [...base, P(it, 'actual')]));
+            if (eq) return it;
+        }
+        st.push(S(line, 'buscarRec(nodo=null): caso base → devuelve null. No se encontró ' + q(name) + '.', base));
+        return null;
+    }
+
+    function buscarDept(st, line, raw) {
+        const n = vname(st, line, raw);
+        if (n === null) return null;
+        st.push(S(line, 'departamentos.buscar(' + q(n) + ') recorre ListaDepartamentos con buscarRec(cabeza, ...).'));
+        const d = find(st, line, deps, n);
+        if (!d) { fail(st, line, [], 'ElementoNoEncontradoException', 'El departamento "' + n + '" no fue encontrado.'); return null; }
+        st.push(S(line, 'Se encontró el departamento ' + q(d.name) + ': buscar() devuelve su dato.', [P(d, 'departamento')]));
+        return d;
+    }
+    function buscarProf(st, line, d, raw) {
+        const base = [P(d, 'departamento')];
+        const n = vname(st, line, raw);
+        if (n === null) return null;
+        st.push(S(line, d.name + '.buscarProfesor(' + q(n) + ') → profesores.buscar(): recorre ListaProfesores del departamento.', base));
+        const p = find(st, line, d.profs, n, base);
+        if (!p) { fail(st, line, base, 'ElementoNoEncontradoException', 'El profesor "' + n + '" no fue encontrado.'); return null; }
+        st.push(S(line, 'Se encontró al profesor ' + q(p.name) + ': buscar() devuelve su dato.', [...base, P(p, 'profesor')]));
+        return p;
+    }
+    function buscarAsig(st, line, d, p, raw) {
+        const base = [P(d, 'departamento'), P(p, 'profesor')];
+        const n = vname(st, line, raw);
+        if (n === null) return null;
+        st.push(S(line, p.name + '.getAsignaturas().buscar(' + q(n) + '): recorre ListaAsignaturas del profesor.', base));
+        const a = find(st, line, p.asigs, n, base);
+        if (!a) { fail(st, line, base, 'ElementoNoEncontradoException', 'La asignatura "' + n + '" no fue encontrada.'); return null; }
+        st.push(S(line, 'Se encontró la asignatura ' + q(a.name) + ': buscar() devuelve su dato.', [...base, P(a, 'asignatura')]));
+        return a;
+    }
+    // buscarProfesor(departamento, profesor) del sistema (dos búsquedas encadenadas)
+    function buscarProfSistema(st, line, rawD, rawP) {
+        const d = buscarDept(st, line, rawD);
+        if (!d) return null;
+        const p = buscarProf(st, line, d, rawP);
+        if (!p) return null;
+        return { d, p };
+    }
+
+    function link(lst, node, pos) {
+        lst.det = lst.det.filter(x => x !== node);
+        delete node.state;
+        lst.items.splice(pos, 0, node);
+    }
+    function unlink(lst, node) {
+        const i = lst.items.indexOf(node);
+        if (i >= 0) lst.items.splice(i, 1);
+        node.state = 'removed';
+        lst.det.push(node);
+    }
+    function addPending(lst, node) { node.state = 'pending'; lst.det.push(node); }
+
+    // insertarOrdenadoRec(): ListaProfesores / ListaAsignaturas
+    function insOrd(st, line, lst, node, base) {
+        const items = lst.items;
+        for (let i = 0; i <= items.length; i++) {
+            const it = items[i];
+            if (!it) {
+                st.push(S(line, 'insertarOrdenadoRec(nodo=null): caso base → devuelve nuevoNodo. La llamada anterior lo enlazará al final de la lista.',
+                    [...base, P(node, 'nuevoNodo')], () => link(lst, node, items.length)));
+                return;
+            }
+            const c = cmpIC(node.name, it.name);
+            if (c < 0) {
+                st.push(S(line, 'insertarOrdenadoRec(nodo=' + it.name + '): compareToIgnoreCase(' + q(node.name) + ', ' + q(it.name) + ') = ' + c +
+                    ' < 0 → nuevoNodo.setSiguiente(nodo) y se devuelve nuevoNodo: se inserta ANTES de ' + it.name + '.',
+                    [...base, P(it, 'actual'), P(node, 'nuevoNodo')], () => link(lst, node, i)));
+                return;
+            }
+            st.push(S(line, 'insertarOrdenadoRec(nodo=' + it.name + '): compareToIgnoreCase(' + q(node.name) + ', ' + q(it.name) + ') = ' + c +
+                ' ≥ 0 → va después: llamada recursiva con el siguiente nodo.', [...base, P(it, 'actual'), P(node, 'nuevoNodo')]));
+        }
+    }
+
+    // insertarFinalRec(): ListaDepartamentos
+    function insFinal(st, line, lst, node, base) {
+        for (const it of lst.items) {
+            st.push(S(line, 'insertarFinalRec(nodo=' + it.name + '): nodo != null → llamada recursiva con ' + it.name + '.getSiguiente().',
+                [...base, P(it, 'actual'), P(node, 'nuevoNodo')]));
+        }
+        st.push(S(line, 'insertarFinalRec(nodo=null): caso base → devuelve nuevoNodo; cada llamada pendiente lo enlaza con setSiguiente al regresar.',
+            [...base, P(node, 'nuevoNodo')], () => link(lst, node, lst.items.length)));
+    }
+
+    // eliminar(): existe() + eliminarRec()
+    function delFrom(st, line, lst, n, notFoundMsg, base, extra) {
+        st.push(S(line, 'existe(' + q(n) + '): se comprueba con buscarRec que el elemento está en la lista.', base));
+        const found = find(st, line, lst, n, base);
+        if (!found) { fail(st, line, base, 'ElementoNoEncontradoException', notFoundMsg); return null; }
+        st.push(S(line, 'existe() → true. Se ejecuta cabeza = eliminarRec(cabeza, ' + q(n) + ').', [...base, P(found, 'actual')]));
+        for (const it of lst.items) {
+            if (it === found) {
+                st.push(S(line, 'eliminarRec(nodo=' + it.name + '): equalsIgnoreCase → true. Devuelve nodo.getSiguiente(): ' + it.name + ' queda fuera de la cadena.' + (extra || ''),
+                    [...base, P(it, 'actual')], () => unlink(lst, it)));
+                break;
+            }
+            st.push(S(line, 'eliminarRec(nodo=' + it.name + '): equalsIgnoreCase → false. Llamada recursiva con el siguiente; al regresar se reenlaza.', [...base, P(it, 'actual')]));
+        }
+        return found;
+    }
+
+    // ================== Métodos reales de SistemaGestionAcademica.java ==================
+    // Cada método: inputs, code (idéntico al Java), summary, E (explicación por línea, 1-based),
+    // R (reglas RN/RF/RNF por línea), RS (reglas del método) y plan() con los pasos de la simulación.
     const METHODS = {
 
-        agregarNodoExterno: {
-            inputs: ['dato'],
+        crearDepartamento: {
+            inputs: [{ label: 'nombre' }],
             code: [
-                'public void agregarNodoExterno(String dato) {',
-                '    NodoExterno nuevoNodo = new NodoExterno(dato);',
-                '    if (cabeza == null) {',
-                '        cabeza = nuevoNodo;',
-                '    } else {',
-                '        NodoExterno actual = cabeza;',
-                '        while (actual.getSiguiente() != null) {',
-                '            actual = actual.getSiguiente();',
-                '        }',
-                '        actual.setSiguiente(nuevoNodo);',
-                '    }',
+                'public void crearDepartamento(String nombre) {',
+                '    Departamento departamento = new Departamento(nombre);',
+                '    departamentos.insertarFinal(departamento);',
                 '}'
             ],
-            plan([dato]) {
+            summary: 'Registra un departamento nuevo. Primero construye el objeto Departamento (que valida y limpia el nombre) y luego lo inserta al final de ListaDepartamentos, que rechaza nulos y nombres repetidos.',
+            E: {
+                1: 'Declara el método público del sistema. Recibe el nombre con el que se creará el departamento.',
+                2: 'Construye el Departamento. Su constructor crea una ListaProfesores vacía y llama a setNombre(): si el nombre es nulo o está vacío (o solo tiene espacios) lanza DatoInvalidoException; si es válido lo guarda con trim().',
+                3: 'Delega en ListaDepartamentos.insertarFinal(). Esta rechaza un departamento nulo (DatoInvalidoException) y uno con nombre repetido (ElementoDuplicadoException, usando existe()); si todo está bien lo enlaza al final con insertarFinalRec y hace total++.'
+            },
+            RS: ['RF-01 · RN-01 · RN-02 · Registrar un departamento con nombre válido y único.', 'RN-03 · RNF-11 · Se inserta al final: la lista conserva el orden de inserción.', 'RN-53 · RN-56 · RN-57 · Nulos, duplicados y datos inválidos lanzan excepciones específicas.'],
+            R: {
+                2: ['RN-01 · RNF-03 · RN-57 · El nombre es obligatorio: no puede ser nulo, vacío ni solo espacios (DatoInvalidoException).', 'RN-04 · El departamento nace con su propia ListaProfesores (puede tener varios profesores).'],
+                3: ['RN-53 · No se permiten elementos nulos.', 'RN-02 · RN-56 · RNF-07 · Nombre único: ElementoDuplicadoException si ya existe (sin distinguir mayúsculas, RN-58).', 'RN-03 · RNF-11 · Inserción al final, en orden de inserción.']
+            },
+            plan([nombre]) {
                 const st = [];
-                const nuevo = { id: uid(), name: dato, courses: [], linked: false };
-                const N = E(nuevo, 'nuevoNodo');
-                const ch = extChain();
-                st.push(S(1, `Se invoca agregarNodoExterno("${dato}").`));
-                st.push(S(2, `Se crea nuevoNodo con el dato "${dato}". Todavía no está enlazado a la multilista.`, [N], () => data.push(nuevo)));
-                if (ch.length === 0) {
-                    st.push(S(3, 'cabeza == null → true. La multilista está vacía.', [N]));
-                    st.push(S(4, 'cabeza = nuevoNodo. El nuevo nodo pasa a ser la cabeza.', [N], () => { nuevo.linked = true; }));
+                st.push(S(1, 'Se invoca crearDepartamento(' + q(nombre) + ').'));
+                const t = nombre.trim();
+                if (t === '') { fail(st, 2, [], 'DatoInvalidoException', 'El nombre del departamento no puede ser vacío.'); return st; }
+                const nuevo = mkDept(t);
+                st.push(S(2, 'new Departamento(' + q(nombre) + '): setNombre() hace trim() → ' + q(t) + ' (no vacío) y se crea su ListaProfesores vacía. Aún no está enlazado a la lista.',
+                    [P(nuevo, 'departamento')], () => addPending(deps, nuevo)));
+                const base = [P(nuevo, 'departamento')];
+                st.push(S(3, 'departamentos.insertarFinal(departamento): el departamento no es null.', base));
+                st.push(S(3, 'existe(' + q(t) + '): validarNombre() y buscarRec() revisan si ya hay un departamento con ese nombre.', base));
+                const dup = find(st, 3, deps, t, base);
+                if (dup) { fail(st, 3, [...base, P(dup, 'actual')], 'ElementoDuplicadoException', 'El departamento "' + t + '" ya existe.'); return st; }
+                st.push(S(3, 'existe() → false: el nombre es nuevo. Se crea NodoDepartamento y se ejecuta cabeza = insertarFinalRec(cabeza, nuevoNodo).', base));
+                insFinal(st, 3, deps, nuevo, []);
+                st.push(S(3, 'Al regresar de la recursión cada nodo reenlaza su siguiente; cabeza se reasigna y total++ → ' + (deps.items.length + 1) + ' departamentos.', [P(nuevo, 'departamento')]));
+                st.push(S(4, 'Fin del método: el departamento quedó al final de la lista.'));
+                return st;
+            }
+        },
+
+        crearProfesor: {
+            inputs: [{ label: 'nombreDepartamento' }, { label: 'nombreProfesor' }, { label: 'categoriaDocente', def: 'Titular' }, { label: 'gradoCientifico', def: 'Doctor' }, { label: 'edad', def: '40', num: true }, { label: 'evaluacion', def: '90', num: true }],
+            code: [
+                'public void crearProfesor(',
+                '    String nombreDepartamento,',
+                '    String nombreProfesor,',
+                '    String categoriaDocente,',
+                '    String gradoCientifico,',
+                '    int edad,',
+                '    int evaluacion',
+                ') {',
+                '    Departamento departamento = buscarDepartamento(nombreDepartamento);',
+                '',
+                '    Profesor profesor = new Profesor(',
+                '        nombreProfesor,',
+                '        categoriaDocente,',
+                '        gradoCientifico,',
+                '        edad,',
+                '        evaluacion',
+                '    );',
+                '',
+                '    departamento.agregarProfesor(profesor);',
+                '}'
+            ],
+            summary: 'Registra un profesor dentro de un departamento que ya existe. Busca el departamento, construye el Profesor (validando todos sus datos) y lo inserta ordenado alfabéticamente en la ListaProfesores de ese departamento.',
+            E: {
+                1: 'Declara el método público. Necesita el departamento destino y los cinco datos del profesor.',
+                9: 'Busca el departamento por nombre con buscarDepartamento() → departamentos.buscar(). Limpia el nombre con trim(), recorre la lista con buscarRec y, si no existe, lanza ElementoNoEncontradoException y el método termina.',
+                11: 'Comienza la construcción del Profesor. El constructor crea su ListaAsignaturas vacía y valida cada dato: nombre, categoría y grado no vacíos, edad ≥ 0 y evaluación entre 0 y 100. Cualquier fallo lanza DatoInvalidoException.',
+                19: 'Agrega el profesor al departamento: Departamento.agregarProfesor() → ListaProfesores.insertarOrdenado(). Rechaza null y nombres repetidos dentro del mismo departamento (existe) y lo coloca en su posición alfabética con insertarOrdenadoRec.'
+            },
+            RS: ['RF-06 · RF-07 · RN-06 · Registrar un profesor dentro de un departamento existente, validando sus datos.', 'RN-09 · RNF-12 · RN-10 · Los profesores quedan ordenados alfabéticamente, sin distinguir mayúsculas.', 'RN-08 · RNF-08 · RN-56 · No puede haber dos profesores con el mismo nombre en el mismo departamento.'],
+            R: {
+                9: ['RN-06 · RF-06 · El profesor se gestiona dentro de un departamento existente.', 'RN-55 · RF-50 · Si el departamento no existe: ElementoNoEncontradoException.', 'RN-58 · RNF-03 · RN-22 · Nombre con trim(), no vacío y comparado sin distinguir mayúsculas.'],
+                11: ['RN-07 · RN-11 · RN-12 · Nombre, categoría docente y grado científico son obligatorios.', 'RN-13 · La edad no puede ser negativa.', 'RN-14 · RNF-04 · La evaluación debe estar entre 0 y 100.', 'RF-07 · RN-57 · RNF-01 · Se valida todo ANTES de modificar el sistema; un dato inválido lanza DatoInvalidoException.'],
+                19: ['RN-53 · Un profesor nulo no se admite.', 'RN-08 · RN-56 · RNF-08 · Nombre repetido en el departamento: ElementoDuplicadoException.', 'RN-09 · RN-10 · RNF-12 · RNF-13 · Inserción ordenada alfabéticamente con compareToIgnoreCase.', 'RN-04 · Un departamento puede tener varios profesores.']
+            },
+            plan([rd, rp, rc, rg, re, rv]) {
+                const st = [];
+                const edad = parseInt(re, 10), ev = parseInt(rv, 10);
+                st.push(S(1, 'Se invoca crearProfesor(' + q(rd) + ', ' + q(rp) + ', ' + q(rc) + ', ' + q(rg) + ', ' + edad + ', ' + ev + ').'));
+                const d = buscarDept(st, 9, rd);
+                if (!d) return st;
+                const base = [P(d, 'departamento')];
+                const nom = rp.trim(), cat = rc.trim(), gr = rg.trim();
+                if (nom === '') { fail(st, 11, base, 'DatoInvalidoException', 'El nombre del profesor no puede ser vacío.'); return st; }
+                st.push(S(11, 'new Profesor(...): setNombre() → trim() ' + q(nom) + ', no vacío. Antes se creó su ListaAsignaturas vacía.', base));
+                if (cat === '') { fail(st, 11, base, 'DatoInvalidoException', 'La categoría docente no puede ser vacía.'); return st; }
+                st.push(S(11, 'setCategoriaDocente(' + q(rc) + ') → ' + q(cat) + ': válida.', base));
+                if (gr === '') { fail(st, 11, base, 'DatoInvalidoException', 'El grado científico no puede ser vacío.'); return st; }
+                st.push(S(11, 'setGradoCientifico(' + q(rg) + ') → ' + q(gr) + ': válido.', base));
+                if (edad < 0) { fail(st, 11, base, 'DatoInvalidoException', 'La edad del profesor no puede ser negativa.'); return st; }
+                st.push(S(11, 'setEdad(' + edad + '): ' + edad + ' ≥ 0, válida.', base));
+                if (ev < 0 || ev > 100) { fail(st, 11, base, 'DatoInvalidoException', 'La evaluación del profesor debe estar entre 0 y 100.'); return st; }
+                const nuevo = mkProf(nom, cat, gr, edad, ev);
+                st.push(S(11, 'setEvaluacion(' + ev + '): entre 0 y 100, válida. El Profesor queda construido pero todavía no pertenece al departamento.',
+                    [...base, P(nuevo, 'profesor')], () => addPending(d.profs, nuevo)));
+                const b2 = [...base, P(nuevo, 'profesor')];
+                st.push(S(19, 'departamento.agregarProfesor(profesor) → profesores.insertarOrdenado(): el profesor no es null.', b2));
+                st.push(S(19, 'existe(' + q(nom) + '): se busca en ListaProfesores de ' + d.name + ' un profesor con ese nombre.', b2));
+                const dup = find(st, 19, d.profs, nom, base);
+                if (dup) { fail(st, 19, [...base, P(dup, 'actual')], 'ElementoDuplicadoException', 'El profesor "' + nom + '" ya existe.'); return st; }
+                st.push(S(19, 'existe() → false. Se crea NodoProfesor y cabeza = insertarOrdenadoRec(cabeza, nuevoNodo).', b2));
+                insOrd(st, 19, d.profs, nuevo, base);
+                st.push(S(19, 'Al regresar, las llamadas reenlazan la cadena y total++ → ' + (d.profs.items.length + 1) + ' profesores en ' + d.name + '. La lista sigue ordenada.', b2));
+                st.push(S(20, 'Fin del método.'));
+                return st;
+            }
+        },
+
+        crearAsignatura: {
+            inputs: [{ label: 'nombreDepartamento' }, { label: 'nombreProfesor' }, { label: 'nombreAsignatura' }, { label: 'horas', def: '40', num: true }],
+            code: [
+                'public void crearAsignatura(',
+                '    String nombreDepartamento,',
+                '    String nombreProfesor,',
+                '    String nombreAsignatura,',
+                '    int horas',
+                ') {',
+                '    Profesor profesor = buscarProfesor(',
+                '        nombreDepartamento,',
+                '        nombreProfesor',
+                '    );',
+                '',
+                '    Asignatura asignatura = new Asignatura(nombreAsignatura, horas);',
+                '',
+                '    profesor.agregarAsignatura(asignatura);',
+                '}'
+            ],
+            summary: 'Registra una asignatura a un profesor existente. Localiza al profesor (departamento → profesor), construye la Asignatura validando nombre y horas, y la inserta ordenada en la ListaAsignaturas de ese profesor.',
+            E: {
+                1: 'Declara el método público. Identifica al profesor por departamento y nombre, y recibe el nombre y las horas de la asignatura.',
+                7: 'Obtiene al profesor con buscarProfesor(): primero busca el departamento y luego, dentro de él, al profesor. Si cualquiera no existe, lanza ElementoNoEncontradoException y el método termina.',
+                12: 'Construye la Asignatura. setNombre() exige nombre no vacío (con trim) y setHoras() exige horas mayores que 0; en caso contrario lanza DatoInvalidoException.',
+                14: 'Inserta la asignatura en la lista del profesor: Profesor.agregarAsignatura() → ListaAsignaturas.insertarOrdenado(). Rechaza null y nombres repetidos y la deja en su posición alfabética. Con ello cambia el total de horas del profesor.'
+            },
+            RS: ['RF-17 · RF-18 · Registrar una asignatura a un profesor existente, con nombre no vacío y horas mayores que 0.', 'RN-20 · RN-21 · RNF-09 · RNF-12 · Sin duplicados en la lista del profesor y ordenadas alfabéticamente.', 'RN-15 · RN-16 · RN-17 · Un profesor tiene varias asignaturas; su total de horas decide si es destacado (> 120).'],
+            R: {
+                7: ['RN-06 · RN-15 · La asignatura se asigna a un profesor que pertenece a un departamento existente.', 'RN-55 · RF-50 · Departamento o profesor inexistente: ElementoNoEncontradoException.', 'RN-58 · RN-22 · Búsqueda con trim() y sin distinguir mayúsculas.'],
+                12: ['RN-18 · RF-18 · El nombre de la asignatura es obligatorio.', 'RN-19 · RNF-04 · Las horas deben ser mayores que 0.', 'RN-57 · RNF-01 · Datos inválidos: DatoInvalidoException antes de modificar nada.'],
+                14: ['RN-53 · No se permite una asignatura nula.', 'RN-20 · RN-56 · RNF-09 · Duplicada en el profesor: ElementoDuplicadoException.', 'RN-21 · RNF-12 · RNF-13 · RF-20 · Inserción ordenada con compareToIgnoreCase.', 'RN-16 · RN-17 · El total de horas del profesor aumenta; si supera 120 pasa a ser destacado.']
+            },
+            plan([rd, rp, ra, rh]) {
+                const st = [];
+                const horas = parseInt(rh, 10);
+                st.push(S(1, 'Se invoca crearAsignatura(' + q(rd) + ', ' + q(rp) + ', ' + q(ra) + ', ' + horas + ').'));
+                const r = buscarProfSistema(st, 7, rd, rp);
+                if (!r) return st;
+                const { d, p } = r;
+                const base = [P(d, 'departamento'), P(p, 'profesor')];
+                const nom = ra.trim();
+                if (nom === '') { fail(st, 12, base, 'DatoInvalidoException', 'El nombre de la asignatura no puede ser vacío.'); return st; }
+                st.push(S(12, 'new Asignatura(...): setNombre() → trim() ' + q(nom) + ', no vacío.', base));
+                if (horas <= 0) { fail(st, 12, base, 'DatoInvalidoException', 'Las horas de la asignatura deben ser mayores que 0.'); return st; }
+                const nuevo = mkAsig(nom, horas);
+                st.push(S(12, 'setHoras(' + horas + '): ' + horas + ' > 0, válidas. La Asignatura existe pero aún no está en la lista del profesor.',
+                    [...base, P(nuevo, 'asignatura')], () => addPending(p.asigs, nuevo)));
+                const b2 = [...base, P(nuevo, 'asignatura')];
+                st.push(S(14, 'profesor.agregarAsignatura(asignatura) → asignaturas.insertarOrdenado(): la asignatura no es null.', b2));
+                st.push(S(14, 'existe(' + q(nom) + '): se busca en las asignaturas de ' + p.name + '.', b2));
+                const dup = find(st, 14, p.asigs, nom, base);
+                if (dup) { fail(st, 14, [...base, P(dup, 'actual')], 'ElementoDuplicadoException', 'La asignatura "' + nom + '" ya existe.'); return st; }
+                st.push(S(14, 'existe() → false. Se crea NodoAsignatura y cabeza = insertarOrdenadoRec(cabeza, nuevoNodo).', b2));
+                insOrd(st, 14, p.asigs, nuevo, base);
+                const total = horasProf(p) + horas;
+                st.push(S(14, 'Al regresar se reenlaza la cadena y total++. Horas totales de ' + p.name + ': ' + total + ' → ' + (total > 120 ? 'ahora ES destacado (> 120).' : 'no es destacado (necesita más de 120).'), b2));
+                st.push(S(15, 'Fin del método.'));
+                return st;
+            }
+        },
+
+        buscarProfesor: {
+            inputs: [{ label: 'nombreDepartamento' }, { label: 'nombreProfesor' }],
+            code: [
+                'public Profesor buscarProfesor(',
+                '    String nombreDepartamento,',
+                '    String nombreProfesor',
+                ') {',
+                '    Departamento departamento = buscarDepartamento(nombreDepartamento);',
+                '    return departamento.buscarProfesor(nombreProfesor);',
+                '}'
+            ],
+            summary: 'Localiza un profesor en dos saltos: primero el departamento en ListaDepartamentos y después el profesor en la ListaProfesores de ese departamento. Devuelve el objeto Profesor o lanza ElementoNoEncontradoException.',
+            E: {
+                1: 'Declara el método público. Devuelve un Profesor y necesita el departamento y el nombre del profesor.',
+                5: 'Primer salto de la multilista: busca el departamento (nodo externo) por nombre con buscarDepartamento(). Si no existe lanza ElementoNoEncontradoException.',
+                6: 'Segundo salto: entra a la ListaProfesores del departamento (nodo interno) con departamento.buscarProfesor() → profesores.buscar() y devuelve el Profesor encontrado, o lanza ElementoNoEncontradoException.'
+            },
+            RS: ['RF-10 · Buscar un profesor por nombre dentro de un departamento.', 'RN-22 · RN-58 · RNF-13 · La búsqueda limpia espacios y no distingue mayúsculas.', 'RN-55 · RF-50 · RNF-22 · Si no existe, excepción específica con mensaje claro.'],
+            R: {
+                5: ['RF-03 · RN-58 · RNF-03 · Busca el departamento: nombre con trim(), no vacío, sin distinguir mayúsculas.', 'RN-55 · RF-50 · Departamento inexistente: ElementoNoEncontradoException.'],
+                6: ['RF-10 · RN-06 · Busca al profesor solo dentro de ese departamento.', 'RN-58 · RNF-13 · equalsIgnoreCase en buscarRec.', 'RN-55 · RF-50 · RNF-22 · Profesor inexistente: ElementoNoEncontradoException con el nombre del profesor.']
+            },
+            plan([rd, rp]) {
+                const st = [];
+                st.push(S(1, 'Se invoca buscarProfesor(' + q(rd) + ', ' + q(rp) + ').'));
+                const d = buscarDept(st, 5, rd);
+                if (!d) return st;
+                const p = buscarProf(st, 6, d, rp);
+                if (!p) return st;
+                st.push(S(6, 'return: se devuelve el Profesor encontrado.', [P(d, 'departamento'), P(p, 'profesor')], () => println('=> retorna: ' + profToString(p))));
+                st.push(S(7, 'Fin del método.'));
+                return st;
+            }
+        },
+
+        buscarAsignatura: {
+            inputs: [{ label: 'nombreDepartamento' }, { label: 'nombreProfesor' }, { label: 'nombreAsignatura' }],
+            code: [
+                'public Asignatura buscarAsignatura(',
+                '    String nombreDepartamento,',
+                '    String nombreProfesor,',
+                '    String nombreAsignatura',
+                ') {',
+                '    Profesor profesor = buscarProfesor(',
+                '        nombreDepartamento,',
+                '        nombreProfesor',
+                '    );',
+                '',
+                '    return profesor.getAsignaturas().buscar(nombreAsignatura);',
+                '}'
+            ],
+            summary: 'Recorre los tres niveles de la multilista: departamento → profesor → asignatura. Devuelve la Asignatura o lanza ElementoNoEncontradoException en el nivel donde falle la búsqueda.',
+            E: {
+                1: 'Declara el método público. Necesita departamento, profesor y asignatura.',
+                6: 'Obtiene al profesor con buscarProfesor(): busca el departamento y, dentro de él, al profesor. Si falla alguno, lanza ElementoNoEncontradoException.',
+                11: 'Entra al tercer nivel: profesor.getAsignaturas() devuelve su ListaAsignaturas y buscar() la recorre con buscarRec. Devuelve la Asignatura o lanza ElementoNoEncontradoException.'
+            },
+            RS: ['RF-21 · Buscar una asignatura por nombre dentro de un profesor.', 'RN-22 · RN-58 · RNF-13 · Búsqueda con trim() y sin distinguir mayúsculas.', 'RN-55 · RF-50 · Excepción específica si no se encuentra.'],
+            R: {
+                6: ['RN-06 · RN-55 · RF-50 · Primero se resuelve el departamento y el profesor; si no existen, ElementoNoEncontradoException.'],
+                11: ['RF-21 · RN-15 · Se busca solo entre las asignaturas de ese profesor.', 'RN-22 · RN-58 · RNF-13 · buscarRec usa equalsIgnoreCase.', 'RN-55 · RF-50 · RNF-22 · La asignatura inexistente lanza ElementoNoEncontradoException.']
+            },
+            plan([rd, rp, ra]) {
+                const st = [];
+                st.push(S(1, 'Se invoca buscarAsignatura(' + q(rd) + ', ' + q(rp) + ', ' + q(ra) + ').'));
+                const r = buscarProfSistema(st, 6, rd, rp);
+                if (!r) return st;
+                const a = buscarAsig(st, 11, r.d, r.p, ra);
+                if (!a) return st;
+                st.push(S(11, 'return: se devuelve la Asignatura encontrada.', [P(r.d, 'departamento'), P(r.p, 'profesor'), P(a, 'asignatura')], () => println('=> retorna: ' + asigToString(a))));
+                st.push(S(12, 'Fin del método.'));
+                return st;
+            }
+        },
+
+        eliminarDepartamento: {
+            inputs: [{ label: 'nombreDepartamento' }],
+            code: [
+                'public void eliminarDepartamento(String nombreDepartamento) {',
+                '    departamentos.eliminar(nombreDepartamento);',
+                '}'
+            ],
+            summary: 'Elimina un departamento por nombre. Al desconectar el nodo del departamento desaparecen con él sus profesores y asignaturas, porque están contenidos en él. No se escribe nada en el historial.',
+            E: {
+                1: 'Declara el método público. Recibe el nombre del departamento a eliminar.',
+                2: 'Delega en ListaDepartamentos.eliminar(): limpia el nombre (validarNombre), comprueba con existe() que el departamento está (si no, ElementoNoEncontradoException), ejecuta cabeza = eliminarRec(cabeza, nombre) y total--.'
+            },
+            RS: ['RF-04 · Eliminar un departamento por nombre.', 'RN-05 · Eliminar el departamento elimina también sus profesores y asignaturas.', 'RN-52 · La eliminación NO genera registro en el historial.'],
+            R: {
+                2: ['RF-04 · RN-58 · RN-22 · Búsqueda con trim() y equalsIgnoreCase.', 'RN-55 · RF-50 · RNF-22 · Si no existe: ElementoNoEncontradoException.', 'RN-05 · Se desconecta el nodo completo: su ListaProfesores y las ListaAsignaturas quedan inaccesibles.', 'RN-52 · No se llama a registrarHistorial().']
+            },
+            plan([rd]) {
+                const st = [];
+                st.push(S(1, 'Se invoca eliminarDepartamento(' + q(rd) + ').'));
+                const n = vname(st, 2, rd);
+                if (n === null) return st;
+                const d = delFrom(st, 2, deps, n, 'El departamento "' + n + '" no fue encontrado.', [], ' RN-05: sus profesores y asignaturas desaparecen con él.');
+                if (!d) return st;
+                st.push(S(2, 'cabeza se reasigna con el resultado y total-- → ' + (deps.items.length - 1) + ' departamentos. RN-52: no se registra en el historial.'));
+                st.push(S(3, 'Fin del método.'));
+                return st;
+            }
+        },
+
+        eliminarProfesor: {
+            inputs: [{ label: 'nombreDepartamento' }, { label: 'nombreProfesor' }],
+            code: [
+                'public void eliminarProfesor(',
+                '    String nombreDepartamento,',
+                '    String nombreProfesor',
+                ') {',
+                '    Departamento departamento = buscarDepartamento(nombreDepartamento);',
+                '    departamento.eliminarProfesor(nombreProfesor);',
+                '}'
+            ],
+            summary: 'Elimina un profesor de un departamento. Localiza el departamento y luego quita al profesor de su ListaProfesores; se van con él sus asignaturas. No genera historial.',
+            E: {
+                1: 'Declara el método público con el departamento y el nombre del profesor a eliminar.',
+                5: 'Busca el departamento con buscarDepartamento(); si no existe lanza ElementoNoEncontradoException.',
+                6: 'Departamento.eliminarProfesor() → ListaProfesores.eliminar(): valida el nombre, comprueba existe() (si no, ElementoNoEncontradoException), ejecuta eliminarRec y total--.'
+            },
+            RS: ['RF-11 · Eliminar un profesor de un departamento.', 'RN-52 · La eliminación no genera registro en el historial.', 'RN-55 · RF-50 · Excepción específica si el departamento o el profesor no existen.'],
+            R: {
+                5: ['RN-06 · RN-55 · RF-50 · El profesor se elimina dentro de su departamento; departamento inexistente → excepción.'],
+                6: ['RF-11 · RN-58 · RNF-13 · Búsqueda con trim() y sin distinguir mayúsculas.', 'RN-55 · RNF-22 · Profesor inexistente: ElementoNoEncontradoException.', 'RN-15 · Sus asignaturas viven en el profesor: desaparecen con él.', 'RN-52 · No se llama a registrarHistorial().']
+            },
+            plan([rd, rp]) {
+                const st = [];
+                st.push(S(1, 'Se invoca eliminarProfesor(' + q(rd) + ', ' + q(rp) + ').'));
+                const d = buscarDept(st, 5, rd);
+                if (!d) return st;
+                const base = [P(d, 'departamento')];
+                const n = vname(st, 6, rp);
+                if (n === null) return st;
+                const p = delFrom(st, 6, d.profs, n, 'El profesor "' + n + '" no fue encontrado.', base, ' Sus asignaturas se van con él.');
+                if (!p) return st;
+                st.push(S(6, 'cabeza se reasigna y total-- → ' + (d.profs.items.length - 1) + ' profesores en ' + d.name + '. RN-52: sin historial.', base));
+                st.push(S(7, 'Fin del método.'));
+                return st;
+            }
+        },
+
+        eliminarAsignatura: {
+            inputs: [{ label: 'nombreDepartamento' }, { label: 'nombreProfesor' }, { label: 'nombreAsignatura' }],
+            code: [
+                'public void eliminarAsignatura(',
+                '    String nombreDepartamento,',
+                '    String nombreProfesor,',
+                '    String nombreAsignatura',
+                ') {',
+                '    Profesor profesor = buscarProfesor(',
+                '        nombreDepartamento,',
+                '        nombreProfesor',
+                '    );',
+                '',
+                '    profesor.getAsignaturas().eliminar(nombreAsignatura);',
+                '}'
+            ],
+            summary: 'Elimina una asignatura de un profesor. Recorre departamento → profesor y quita la asignatura de su ListaAsignaturas. Su total de horas disminuye, pero no se registra en el historial.',
+            E: {
+                1: 'Declara el método público con los tres niveles: departamento, profesor y asignatura.',
+                6: 'Resuelve al profesor con buscarProfesor() (departamento y luego profesor). Si no existen, ElementoNoEncontradoException.',
+                11: 'ListaAsignaturas.eliminar(): valida el nombre, comprueba existe() (si no, ElementoNoEncontradoException), ejecuta eliminarRec y total--.'
+            },
+            RS: ['RF-22 · Eliminar una asignatura de un profesor.', 'RN-52 · La eliminación no genera registro en el historial.', 'RN-16 · El total de horas del profesor se recalcula con las asignaturas que quedan.'],
+            R: {
+                6: ['RN-55 · RF-50 · Departamento o profesor inexistente: ElementoNoEncontradoException.'],
+                11: ['RF-22 · RN-58 · RNF-13 · Búsqueda con trim() y sin distinguir mayúsculas.', 'RN-55 · RNF-22 · Asignatura inexistente: ElementoNoEncontradoException.', 'RN-16 · RN-17 · Al quitarla bajan las horas del profesor y puede dejar de ser destacado.', 'RN-52 · No se llama a registrarHistorial().']
+            },
+            plan([rd, rp, ra]) {
+                const st = [];
+                st.push(S(1, 'Se invoca eliminarAsignatura(' + q(rd) + ', ' + q(rp) + ', ' + q(ra) + ').'));
+                const r = buscarProfSistema(st, 6, rd, rp);
+                if (!r) return st;
+                const base = [P(r.d, 'departamento'), P(r.p, 'profesor')];
+                const n = vname(st, 11, ra);
+                if (n === null) return st;
+                const a = delFrom(st, 11, r.p.asigs, n, 'La asignatura "' + n + '" no fue encontrada.', base);
+                if (!a) return st;
+                const total = horasProf(r.p) - a.horas;
+                st.push(S(11, 'total-- → ' + (r.p.asigs.items.length - 1) + ' asignaturas. Horas de ' + r.p.name + ': ' + total + (total > 120 ? ' (sigue siendo destacado).' : ' (no es destacado).') + ' RN-52: sin historial.', base));
+                st.push(S(12, 'Fin del método.'));
+                return st;
+            }
+        },
+
+        actualizarHorasAsignaturaInterno: {
+            inputs: [{ label: 'nombreDepartamento' }, { label: 'nombreProfesor' }, { label: 'nombreAsignatura' }, { label: 'nuevasHoras', def: '100', num: true }],
+            note: 'El parámetro descripcion se fija en «Actualización directa de horas de asignatura».',
+            code: [
+                'private void actualizarHorasAsignaturaInterno(',
+                '    String nombreDepartamento,',
+                '    String nombreProfesor,',
+                '    String nombreAsignatura,',
+                '    int nuevasHoras,',
+                '    String descripcion',
+                ') {',
+                '    Profesor profesor = buscarProfesor(',
+                '        nombreDepartamento,',
+                '        nombreProfesor',
+                '    );',
+                '',
+                '    Asignatura asignatura = profesor',
+                '        .getAsignaturas()',
+                '        .buscar(nombreAsignatura);',
+                '',
+                '    int horasAnteriores = asignatura.getHoras();',
+                '',
+                '    asignatura.setHoras(nuevasHoras);',
+                '',
+                '    registrarHistorial(',
+                '        nombreDepartamento,',
+                '        nombreProfesor,',
+                '        nombreAsignatura,',
+                '        RegistroHistorial.HORAS_ASIGNATURA,',
+                '        String.valueOf(horasAnteriores),',
+                '        String.valueOf(nuevasHoras),',
+                '        descripcion',
+                '    );',
+                '}'
+            ],
+            summary: 'Cambia las horas de una asignatura recorriendo los tres niveles de la multilista. Valida las nuevas horas dentro de Asignatura.setHoras() y solo si el cambio fue válido lo registra en la pila de historial con el valor anterior y el nuevo.',
+            E: {
+                1: 'Declara el método interno que usa actualizarHorasAsignatura(). Recibe los tres nombres, las nuevas horas y una descripción para el historial.',
+                8: 'Obtiene al profesor con buscarProfesor() (departamento y luego profesor). Si no existen, ElementoNoEncontradoException y no se modifica nada.',
+                13: 'Comienza la obtención de la asignatura: toma la referencia al profesor para consultar sus asignaturas.',
+                14: 'Accede a la ListaAsignaturas del profesor.',
+                15: 'Busca la asignatura por nombre con buscar() (trim, equalsIgnoreCase). Si no existe lanza ElementoNoEncontradoException.',
+                17: 'Guarda las horas actuales ANTES de cambiarlas: se necesitan para el registro de historial (valor anterior).',
+                19: 'Asigna las nuevas horas con Asignatura.setHoras(). Si son ≤ 0 lanza DatoInvalidoException y el método termina aquí: nada se modifica ni se registra.',
+                21: 'Registra el cambio con registrarHistorial(): incrementa contadorOperaciones (que nunca disminuye), crea un RegistroHistorial con turno, descripción, departamento, profesor, asignatura, tipo, valor anterior y valor nuevo, y lo apila con historial.push().',
+                22: 'Primer dato del registro: nombre del departamento.',
+                23: 'Segundo dato: nombre del profesor.',
+                24: 'Tercer dato: nombre de la asignatura modificada (en cambios de profesor este dato va en null).',
+                25: 'Tipo de modificación: la constante HORAS_ASIGNATURA.',
+                26: 'Valor anterior convertido a texto con String.valueOf().',
+                27: 'Valor nuevo convertido a texto.',
+                28: 'Descripción de la operación (aquí, actualización directa).'
+            },
+            RS: ['RF-23 · RF-24 · Actualizar las horas de una asignatura y registrarlo en el historial.', 'RN-19 · RNF-04 · Las horas deben ser mayores que 0.', 'RN-39 · RNF-10 · RNF-16 · RNF-17 · Toda actualización exitosa queda en el historial con valor anterior, valor nuevo y turno.', 'RN-16 · RN-17 · Cambiar horas puede hacer que el profesor pase a destacado (> 120) o deje de serlo.'],
+            R: {
+                8: ['RN-06 · RN-55 · RF-50 · Se resuelve el profesor; si no existe, excepción y sin cambios.'],
+                15: ['RN-22 · RN-58 · RNF-13 · RF-21 · Búsqueda de la asignatura sin distinguir mayúsculas y con trim().', 'RN-55 · RNF-22 · Inexistente: ElementoNoEncontradoException.'],
+                17: ['RNF-10 · RNF-17 · Se conserva el valor anterior para la trazabilidad.'],
+                19: ['RN-19 · RF-18 · RNF-04 · Horas ≤ 0: DatoInvalidoException.', 'RNF-20 · RNF-01 · Una operación inválida no altera el estado: si falla aquí no se llega a registrarHistorial().', 'RN-16 · RN-17 · Cambia el total de horas del profesor.'],
+                21: ['RN-39 · RNF-16 · RF-16 · RF-24 · Cada actualización válida se registra en el historial.', 'RNF-15 · El historial es una pila LIFO (push).', 'RN-24 · RNF-17 · El turno es consecutivo (contadorOperaciones++) y no se reutiliza.'],
+                25: ['RNF-17 · El historial identifica el tipo de cambio.'],
+                26: ['RNF-10 · RNF-17 · Valor anterior.'],
+                27: ['RNF-10 · RNF-17 · Valor nuevo.']
+            },
+            plan([rd, rp, ra, rh]) {
+                const st = [];
+                const nuevas = parseInt(rh, 10);
+                st.push(S(1, 'Se invoca actualizarHorasAsignaturaInterno(' + q(rd) + ', ' + q(rp) + ', ' + q(ra) + ', ' + nuevas + ', «Actualización directa de horas de asignatura»).'));
+                const r = buscarProfSistema(st, 8, rd, rp);
+                if (!r) return st;
+                const a = buscarAsig(st, 15, r.d, r.p, ra);
+                if (!a) return st;
+                const base = [P(r.d, 'departamento'), P(r.p, 'profesor'), P(a, 'asignatura')];
+                const ant = a.horas;
+                st.push(S(17, 'horasAnteriores = ' + ant + '. Se guarda antes de modificar.', base));
+                if (nuevas <= 0) { fail(st, 19, base, 'DatoInvalidoException', 'Las horas de la asignatura deben ser mayores que 0.'); st.push(S(19, 'No se llegó a registrarHistorial(): el historial no cambia.', base, null, true)); return st; }
+                const antTotal = horasProf(r.p), nuevoTotal = antTotal - ant + nuevas;
+                st.push(S(19, 'setHoras(' + nuevas + '): ' + nuevas + ' > 0 → ' + a.name + ' pasa de ' + ant + ' a ' + nuevas + ' horas. Total de ' + r.p.name + ': ' + antTotal + ' → ' + nuevoTotal +
+                    (nuevoTotal > 120 ? ' (destacado).' : ' (no destacado).'), base, () => { a.horas = nuevas; }));
+                const turno = contadorOperaciones + 1;
+                st.push(S(21, 'registrarHistorial(...): contadorOperaciones++ → turno #' + turno + '. El contador nunca disminuye, aunque luego se deshaga el cambio.', base, () => { contadorOperaciones++; }));
+                st.push(S(25, 'Se arma el RegistroHistorial con tipo HORAS_ASIGNATURA.', base));
+                st.push(S(26, 'valorAnterior = ' + q(String(ant)) + '.', base));
+                st.push(S(27, 'valorNuevo = ' + q(String(nuevas)) + '.', base));
+                st.push(S(28, 'historial.push(registro): el registro queda en la cima de la pila (LIFO).', base,
+                    () => println('historial.push → Turno #' + turno + ' | HORAS_ASIGNATURA | ' + r.d.name + ' | ' + r.p.name + ' | ' + a.name + ' | ' + ant + ' → ' + nuevas)));
+                st.push(S(30, 'Fin del método.'));
+                return st;
+            }
+        },
+
+        listarProfesores: {
+            inputs: [{ label: 'nombreDepartamento' }],
+            code: [
+                'public String listarProfesores(String nombreDepartamento) {',
+                '    Departamento departamento = buscarDepartamento(nombreDepartamento);',
+                '    return departamento.listarProfesores();',
+                '}'
+            ],
+            summary: 'Devuelve el listado de profesores de un departamento, ya ordenado alfabéticamente. Si el departamento no tiene profesores devuelve un mensaje legible en lugar de un texto vacío.',
+            E: {
+                1: 'Declara el método público: devuelve un String con el listado. Recibe el nombre del departamento.',
+                2: 'Busca el departamento con buscarDepartamento(); si no existe lanza ElementoNoEncontradoException.',
+                3: 'Departamento.listarProfesores() → ListaProfesores.listar(): si la lista está vacía devuelve «No hay profesores registrados.»; si no, listarRec(cabeza) concatena el toString() de cada profesor con un salto de línea y trim() quita el último.'
+            },
+            RS: ['RF-08 · RF-09 · Listar los profesores de un departamento ordenados alfabéticamente.', 'RNF-21 · El listado es legible: un profesor por línea, o un mensaje claro si no hay.'],
+            R: {
+                2: ['RN-55 · RF-50 · Departamento inexistente: ElementoNoEncontradoException.'],
+                3: ['RF-08 · RF-09 · RN-09 · RNF-12 · Los profesores salen en el orden alfabético en que se insertaron.', 'RNF-21 · Información legible: nombre, categoría, grado, edad, evaluación y horas.']
+            },
+            plan([rd]) {
+                const st = [];
+                st.push(S(1, 'Se invoca listarProfesores(' + q(rd) + ').'));
+                const d = buscarDept(st, 2, rd);
+                if (!d) return st;
+                const base = [P(d, 'departamento')];
+                if (!d.profs.items.length) {
+                    st.push(S(3, 'estaVacia() → true: se devuelve «No hay profesores registrados.»', base, () => println('=> retorna: No hay profesores registrados.')));
+                    st.push(S(4, 'Fin del método.'));
                     return st;
                 }
-                st.push(S(3, 'cabeza == null → false. Ya existen nodos externos.', [N]));
-                st.push(S(6, 'actual = cabeza. Nos posicionamos en el primer nodo.', [E(ch[0], 'actual'), N]));
-                let i = 0;
-                while (true) {
-                    const nx = ch[i + 1];
-                    st.push(S(7, `actual.getSiguiente() != null → ${nx ? 'true' : 'false'}.` + (nx ? ' Hay más nodos.' : ' Es el último nodo.'), [E(ch[i], 'actual'), N]));
-                    if (!nx) break;
-                    i++;
-                    st.push(S(8, 'actual = actual.getSiguiente(). Avanzamos un nodo.', [E(ch[i], 'actual'), N]));
-                }
-                st.push(S(10, 'actual.setSiguiente(nuevoNodo). El nuevo nodo queda enlazado al final.', [E(ch[i], 'actual'), N], () => { nuevo.linked = true; }));
+                st.push(S(3, 'estaVacia() → false. Se ejecuta listarRec(cabeza).trim().', base));
+                d.profs.items.forEach(p => st.push(S(3, 'listarRec(nodo=' + p.name + '): toString() + "\\n" + listarRec(siguiente).', [...base, P(p, 'actual')])));
+                st.push(S(3, 'listarRec(nodo=null): caso base → devuelve "". Al regresar se concatenan los textos y trim() elimina el último salto de línea.', base,
+                    () => println('=> retorna:\n' + d.profs.items.map(profToString).join('\n'))));
+                st.push(S(4, 'Fin del método.'));
                 return st;
             }
         },
 
-        agregarNodoInterno: {
-            inputs: ['datoExterno', 'datoInterno'],
+        listarAsignaturas: {
+            inputs: [{ label: 'nombreDepartamento' }, { label: 'nombreProfesor' }],
             code: [
-                'public void agregarNodoInterno(String datoExterno, String datoInterno) {',
-                '    NodoExterno actual = cabeza;',
-                '    while (actual != null) {',
-                '        if (actual.getDato().equals(datoExterno)) {',
-                '            NodoInterno nuevoNodo = new NodoInterno(datoInterno);',
-                '            if (actual.getListaInterna() == null) {',
-                '                actual.setListaInterna(nuevoNodo);',
-                '            } else {',
-                '                NodoInterno temp = actual.getListaInterna();',
-                '                while (temp.getSiguiente() != null) {',
-                '                    temp = temp.getSiguiente();',
-                '                }',
-                '                temp.setSiguiente(nuevoNodo);',
-                '            }',
-                '            return;',
-                '        }',
-                '        actual = actual.getSiguiente();',
-                '    }',
-                '    System.out.println("Nodo externo no encontrado.");',
+                'public String listarAsignaturas(',
+                '    String nombreDepartamento,',
+                '    String nombreProfesor',
+                ') {',
+                '    Profesor profesor = buscarProfesor(',
+                '        nombreDepartamento,',
+                '        nombreProfesor',
+                '    );',
+                '',
+                '    return profesor.getAsignaturas().listar();',
                 '}'
             ],
-            plan([dExt, dInt]) {
+            summary: 'Devuelve el listado de asignaturas de un profesor, ordenadas alfabéticamente. Recorre departamento → profesor y después usa listar() de su ListaAsignaturas.',
+            E: {
+                1: 'Declara el método público: devuelve un String. Recibe el departamento y el profesor.',
+                5: 'Obtiene al profesor con buscarProfesor() (departamento y luego profesor). Si no existen, ElementoNoEncontradoException.',
+                10: 'profesor.getAsignaturas().listar(): si no hay asignaturas devuelve «No hay asignaturas registradas.»; si hay, listarRec(cabeza) concatena el toString() de cada una («nombre (N horas)») y trim() limpia el final.'
+            },
+            RS: ['RF-19 · RF-20 · Listar las asignaturas de un profesor ordenadas alfabéticamente.', 'RNF-21 · Listado legible y mensaje claro cuando no hay asignaturas.'],
+            R: {
+                5: ['RN-55 · RF-50 · Departamento o profesor inexistente: ElementoNoEncontradoException.'],
+                10: ['RF-19 · RF-20 · RN-21 · RNF-12 · Salen ordenadas alfabéticamente.', 'RNF-21 · Cada asignatura se muestra como «nombre (horas)».']
+            },
+            plan([rd, rp]) {
                 const st = [];
-                const ch = extChain();
-                st.push(S(1, `Se invoca agregarNodoInterno("${dExt}", "${dInt}").`));
-                st.push(S(2, 'actual = cabeza.', [E(ch[0], 'actual')]));
-                for (let i = 0; i < ch.length; i++) {
-                    const e = ch[i];
-                    const A = E(e, 'actual');
-                    st.push(S(3, 'actual != null → true.', [A]));
-                    const eq = e.name === dExt;
-                    st.push(S(4, `actual.getDato().equals("${dExt}") → ${eq}. ("${e.name}")`, [A]));
-                    if (eq) {
-                        const nuevo = { id: uid(), name: dInt, linked: false };
-                        const N = I(nuevo, 'nuevoNodo');
-                        const ic = intChain(e);
-                        st.push(S(5, `Se crea nuevoNodo (NodoInterno) con el dato "${dInt}". Aún no está enlazado.`, [A, N], () => e.courses.push(nuevo)));
-                        if (ic.length === 0) {
-                            st.push(S(6, 'actual.getListaInterna() == null → true. El estudiante no tiene cursos.', [A, N]));
-                            st.push(S(7, 'actual.setListaInterna(nuevoNodo). El nuevo curso es el primero de la sublista.', [A, N], () => { nuevo.linked = true; }));
-                        } else {
-                            st.push(S(6, 'actual.getListaInterna() == null → false. Ya tiene cursos.', [A, N]));
-                            st.push(S(9, 'temp = actual.getListaInterna(). Empezamos en el primer curso.', [A, I(ic[0], 'temp'), N]));
-                            let j = 0;
-                            while (true) {
-                                const nx = ic[j + 1];
-                                st.push(S(10, `temp.getSiguiente() != null → ${nx ? 'true' : 'false'}.` + (nx ? '' : ' Es el último curso.'), [A, I(ic[j], 'temp'), N]));
-                                if (!nx) break;
-                                j++;
-                                st.push(S(11, 'temp = temp.getSiguiente().', [A, I(ic[j], 'temp'), N]));
-                            }
-                            st.push(S(13, 'temp.setSiguiente(nuevoNodo). El nuevo curso queda al final de la sublista.', [A, I(ic[j], 'temp'), N], () => { nuevo.linked = true; }));
-                        }
-                        st.push(S(15, 'return; El método termina.', [A]));
-                        return st;
-                    }
-                    const nx = ch[i + 1];
-                    st.push(S(17, 'actual = actual.getSiguiente().', [E(nx, 'actual')]));
-                }
-                st.push(S(3, 'actual != null → false. Se recorrió toda la lista.'));
-                st.push(S(19, 'Nodo externo no encontrado.', [], () => println('Nodo externo no encontrado.')));
-                return st;
-            }
-        },
-
-        obtenerListaInterna: {
-            inputs: ['datoExterno'],
-            code: [
-                'public NodoInterno obtenerListaInterna(String datoExterno) {',
-                '    NodoExterno actual = cabeza;',
-                '    while (actual != null) {',
-                '        if (actual.getDato().equals(datoExterno)) {',
-                '            return actual.getListaInterna();',
-                '        }',
-                '        actual = actual.getSiguiente();',
-                '    }',
-                '    System.out.println("Nodo externo no encontrado.");',
-                '    return null;',
-                '}'
-            ],
-            plan([dExt]) {
-                const st = [];
-                const ch = extChain();
-                st.push(S(1, `Se invoca obtenerListaInterna("${dExt}").`));
-                st.push(S(2, 'actual = cabeza.', [E(ch[0], 'actual')]));
-                for (let i = 0; i < ch.length; i++) {
-                    const e = ch[i];
-                    const A = E(e, 'actual');
-                    st.push(S(3, 'actual != null → true.', [A]));
-                    const eq = e.name === dExt;
-                    st.push(S(4, `actual.getDato().equals("${dExt}") → ${eq}. ("${e.name}")`, [A]));
-                    if (eq) {
-                        const ic = intChain(e);
-                        st.push(S(5, `return actual.getListaInterna(). Retorna: ${fmtList(ic)}`, [A],
-                            () => println(`=> retorna: ${fmtList(ic)}`)));
-                        return st;
-                    }
-                    st.push(S(7, 'actual = actual.getSiguiente().', [E(ch[i + 1], 'actual')]));
-                }
-                st.push(S(3, 'actual != null → false. Se recorrió toda la lista.'));
-                st.push(S(9, 'Nodo externo no encontrado.', [], () => println('Nodo externo no encontrado.')));
-                st.push(S(10, 'return null.', [], () => println('=> retorna: null')));
-                return st;
-            }
-        },
-
-        actualizarNodoExterno: {
-            inputs: ['datoViejo', 'datoNuevo'],
-            code: [
-                'public void actualizarNodoExterno(String datoViejo, String datoNuevo) {',
-                '    NodoExterno actual = cabeza;',
-                '    while (actual != null) {',
-                '        if (actual.getDato().equals(datoViejo)) {',
-                '            actual.setDato(datoNuevo);',
-                '            return;',
-                '        }',
-                '        actual = actual.getSiguiente();',
-                '    }',
-                '    System.out.println("Nodo externo no encontrado.");',
-                '}'
-            ],
-            plan([viejo, nuevo]) {
-                const st = [];
-                const ch = extChain();
-                st.push(S(1, `Se invoca actualizarNodoExterno("${viejo}", "${nuevo}").`));
-                st.push(S(2, 'actual = cabeza.', [E(ch[0], 'actual')]));
-                for (let i = 0; i < ch.length; i++) {
-                    const e = ch[i];
-                    const A = E(e, 'actual');
-                    st.push(S(3, 'actual != null → true.', [A]));
-                    const eq = e.name === viejo;
-                    st.push(S(4, `actual.getDato().equals("${viejo}") → ${eq}. ("${e.name}")`, [A]));
-                    if (eq) {
-                        st.push(S(5, `actual.setDato("${nuevo}"). Se actualiza el dato del nodo externo.`, [A], () => { e.name = nuevo; }));
-                        st.push(S(6, 'return; El método termina.', [A]));
-                        return st;
-                    }
-                    st.push(S(8, 'actual = actual.getSiguiente().', [E(ch[i + 1], 'actual')]));
-                }
-                st.push(S(3, 'actual != null → false. Se recorrió toda la lista.'));
-                st.push(S(10, 'Nodo externo no encontrado.', [], () => println('Nodo externo no encontrado.')));
-                return st;
-            }
-        },
-
-        actualizarNodoInterno: {
-            inputs: ['datoExterno', 'datoViejo', 'datoNuevo'],
-            code: [
-                'public void actualizarNodoInterno(String datoExterno, String datoViejo, String datoNuevo) {',
-                '    NodoExterno actualExterno = cabeza;',
-                '    while (actualExterno != null) {',
-                '        if (actualExterno.getDato().equals(datoExterno)) {',
-                '            NodoInterno actualInterno = actualExterno.getListaInterna();',
-                '            while (actualInterno != null) {',
-                '                if (actualInterno.getDato().equals(datoViejo)) {',
-                '                    actualInterno.setDato(datoNuevo);',
-                '                    return;',
-                '                }',
-                '                actualInterno = actualInterno.getSiguiente();',
-                '            }',
-                '            System.out.println("Nodo interno no encontrado.");',
-                '            return;',
-                '        }',
-                '        actualExterno = actualExterno.getSiguiente();',
-                '    }',
-                '    System.out.println("Nodo externo no encontrado.");',
-                '}'
-            ],
-            plan([dExt, viejo, nuevo]) {
-                const st = [];
-                const ch = extChain();
-                st.push(S(1, `Se invoca actualizarNodoInterno("${dExt}", "${viejo}", "${nuevo}").`));
-                st.push(S(2, 'actualExterno = cabeza.', [E(ch[0], 'actualExterno')]));
-                for (let i = 0; i < ch.length; i++) {
-                    const e = ch[i];
-                    const A = E(e, 'actualExterno');
-                    st.push(S(3, 'actualExterno != null → true.', [A]));
-                    const eq = e.name === dExt;
-                    st.push(S(4, `actualExterno.getDato().equals("${dExt}") → ${eq}. ("${e.name}")`, [A]));
-                    if (eq) {
-                        const ic = intChain(e);
-                        st.push(S(5, 'actualInterno = actualExterno.getListaInterna().' + (ic.length ? '' : ' La sublista está vacía (null).'), [A, I(ic[0], 'actualInterno')]));
-                        for (let j = 0; j < ic.length; j++) {
-                            const c = ic[j];
-                            const C = I(c, 'actualInterno');
-                            st.push(S(6, 'actualInterno != null → true.', [A, C]));
-                            const eqc = c.name === viejo;
-                            st.push(S(7, `actualInterno.getDato().equals("${viejo}") → ${eqc}. ("${c.name}")`, [A, C]));
-                            if (eqc) {
-                                st.push(S(8, `actualInterno.setDato("${nuevo}"). Se actualiza el dato del nodo interno.`, [A, C], () => { c.name = nuevo; }));
-                                st.push(S(9, 'return; El método termina.', [A, C]));
-                                return st;
-                            }
-                            st.push(S(11, 'actualInterno = actualInterno.getSiguiente().', [A, I(ic[j + 1], 'actualInterno')]));
-                        }
-                        st.push(S(6, 'actualInterno != null → false. Se recorrió toda la sublista.', [A]));
-                        st.push(S(13, 'Nodo interno no encontrado.', [A], () => println('Nodo interno no encontrado.')));
-                        st.push(S(14, 'return; El método termina.', [A]));
-                        return st;
-                    }
-                    st.push(S(16, 'actualExterno = actualExterno.getSiguiente().', [E(ch[i + 1], 'actualExterno')]));
-                }
-                st.push(S(3, 'actualExterno != null → false. Se recorrió toda la lista.'));
-                st.push(S(18, 'Nodo externo no encontrado.', [], () => println('Nodo externo no encontrado.')));
-                return st;
-            }
-        },
-
-        eliminarNodoExterno: {
-            inputs: ['dato'],
-            code: [
-                'public void eliminarNodoExterno(String dato) {',
-                '    if (cabeza == null) {',
-                '        System.out.println("La multilista está vacía.");',
-                '        return;',
-                '    }',
-                '    if (cabeza.getDato().equals(dato)) {',
-                '        cabeza = cabeza.getSiguiente();',
-                '        return;',
-                '    }',
-                '    NodoExterno actual = cabeza;',
-                '    while (actual.getSiguiente() != null) {',
-                '        if (actual.getSiguiente().getDato().equals(dato)) {',
-                '            actual.setSiguiente(actual.getSiguiente().getSiguiente());',
-                '            return;',
-                '        }',
-                '        actual = actual.getSiguiente();',
-                '    }',
-                '    System.out.println("Nodo externo no encontrado.");',
-                '}'
-            ],
-            plan([dato]) {
-                const st = [];
-                const ch = extChain();
-                st.push(S(1, `Se invoca eliminarNodoExterno("${dato}").`));
-                if (ch.length === 0) {
-                    st.push(S(2, 'cabeza == null → true. La multilista está vacía.'));
-                    st.push(S(3, 'La multilista está vacía.', [], () => println('La multilista está vacía.')));
-                    st.push(S(4, 'return; El método termina.'));
+                st.push(S(1, 'Se invoca listarAsignaturas(' + q(rd) + ', ' + q(rp) + ').'));
+                const r = buscarProfSistema(st, 5, rd, rp);
+                if (!r) return st;
+                const base = [P(r.d, 'departamento'), P(r.p, 'profesor')];
+                if (!r.p.asigs.items.length) {
+                    st.push(S(10, 'estaVacia() → true: se devuelve «No hay asignaturas registradas.»', base, () => println('=> retorna: No hay asignaturas registradas.')));
+                    st.push(S(11, 'Fin del método.'));
                     return st;
                 }
-                st.push(S(2, 'cabeza == null → false.'));
-                const eqHead = ch[0].name === dato;
-                st.push(S(6, `cabeza.getDato().equals("${dato}") → ${eqHead}. ("${ch[0].name}")`, [E(ch[0], 'actual')].slice(0, 0)));
-                if (eqHead) {
-                    st.push(S(7, 'cabeza = cabeza.getSiguiente(). El primer nodo se desconecta; la cabeza avanza.', [], () => { ch[0].removed = true; }));
-                    st.push(S(8, 'return; El método termina.'));
-                    return st;
-                }
-                st.push(S(10, 'actual = cabeza.', [E(ch[0], 'actual')]));
-                for (let i = 0; i + 1 < ch.length; i++) {
-                    const A = E(ch[i], 'actual');
-                    st.push(S(11, 'actual.getSiguiente() != null → true.', [A]));
-                    const nx = ch[i + 1];
-                    const eq = nx.name === dato;
-                    st.push(S(12, `actual.getSiguiente().getDato().equals("${dato}") → ${eq}. ("${nx.name}")`, [A]));
-                    if (eq) {
-                        st.push(S(13, 'actual.setSiguiente(actual.getSiguiente().getSiguiente()). El nodo se salta y queda desconectado.', [A], () => { nx.removed = true; }));
-                        st.push(S(14, 'return; El método termina.', [A]));
-                        return st;
-                    }
-                    st.push(S(16, 'actual = actual.getSiguiente().', [E(nx, 'actual')]));
-                }
-                st.push(S(11, 'actual.getSiguiente() != null → false. Se llegó al final.', [E(ch[ch.length - 1], 'actual')]));
-                st.push(S(17, 'Nodo externo no encontrado.', [], () => println('Nodo externo no encontrado.')));
+                st.push(S(10, 'estaVacia() → false. Se ejecuta listarRec(cabeza).trim().', base));
+                r.p.asigs.items.forEach(a => st.push(S(10, 'listarRec(nodo=' + a.name + '): toString() = ' + q(asigToString(a)) + ' + "\\n" + listarRec(siguiente).', [...base, P(a, 'actual')])));
+                st.push(S(10, 'listarRec(nodo=null): caso base → devuelve "". Al regresar se concatenan los textos y trim() elimina el último salto.', base,
+                    () => println('=> retorna:\n' + r.p.asigs.items.map(asigToString).join('\n'))));
+                st.push(S(11, 'Fin del método.'));
                 return st;
             }
         },
 
-        eliminarNodoInterno: {
-            inputs: ['datoExterno', 'datoInterno'],
-            code: [
-                'public void eliminarNodoInterno(String datoExterno, String datoInterno) {',
-                '    NodoExterno actualExterno = cabeza;',
-                '    while (actualExterno != null) {',
-                '        if (actualExterno.getDato().equals(datoExterno)) {',
-                '            if (actualExterno.getListaInterna() == null) {',
-                '                System.out.println("La lista interna está vacía.");',
-                '                return;',
-                '            }',
-                '            if (actualExterno.getListaInterna().getDato().equals(datoInterno)) {',
-                '                actualExterno.setListaInterna(actualExterno.getListaInterna().getSiguiente());',
-                '                return;',
-                '            }',
-                '            NodoInterno actualInterno = actualExterno.getListaInterna();',
-                '            while (actualInterno.getSiguiente() != null) {',
-                '                if (actualInterno.getSiguiente().getDato().equals(datoInterno)) {',
-                '                    actualInterno.setSiguiente(actualInterno.getSiguiente().getSiguiente());',
-                '                    return;',
-                '                }',
-                '                actualInterno = actualInterno.getSiguiente();',
-                '            }',
-                '            System.out.println("Nodo interno no encontrado.");',
-                '            return;',
-                '        }',
-                '        actualExterno = actualExterno.getSiguiente();',
-                '    }',
-                '    System.out.println("Nodo externo no encontrado.");',
-                '}'
-            ],
-            plan([dExt, dInt]) {
-                const st = [];
-                const ch = extChain();
-                st.push(S(1, `Se invoca eliminarNodoInterno("${dExt}", "${dInt}").`));
-                st.push(S(2, 'actualExterno = cabeza.', [E(ch[0], 'actualExterno')]));
-                for (let i = 0; i < ch.length; i++) {
-                    const e = ch[i];
-                    const A = E(e, 'actualExterno');
-                    st.push(S(3, 'actualExterno != null → true.', [A]));
-                    const eq = e.name === dExt;
-                    st.push(S(4, `actualExterno.getDato().equals("${dExt}") → ${eq}. ("${e.name}")`, [A]));
-                    if (eq) {
-                        const ic = intChain(e);
-                        if (ic.length === 0) {
-                            st.push(S(5, 'actualExterno.getListaInterna() == null → true.', [A]));
-                            st.push(S(6, 'La lista interna está vacía.', [A], () => println('La lista interna está vacía.')));
-                            st.push(S(7, 'return; El método termina.', [A]));
-                            return st;
-                        }
-                        st.push(S(5, 'actualExterno.getListaInterna() == null → false.', [A]));
-                        const eqFirst = ic[0].name === dInt;
-                        st.push(S(8, `getListaInterna().getDato().equals("${dInt}") → ${eqFirst}. ("${ic[0].name}")`, [A]));
-                        if (eqFirst) {
-                            st.push(S(9, 'actualExterno.setListaInterna(...getSiguiente()). El primer curso se desconecta.', [A], () => { ic[0].removed = true; }));
-                            st.push(S(10, 'return; El método termina.', [A]));
-                            return st;
-                        }
-                        st.push(S(12, 'actualInterno = actualExterno.getListaInterna().', [A, I(ic[0], 'actualInterno')]));
-                        for (let j = 0; j + 1 < ic.length; j++) {
-                            const C = I(ic[j], 'actualInterno');
-                            const nx = ic[j + 1];
-                            st.push(S(13, 'actualInterno.getSiguiente() != null → true.', [A, C]));
-                            const eqn = nx.name === dInt;
-                            st.push(S(14, `actualInterno.getSiguiente().getDato().equals("${dInt}") → ${eqn}. ("${nx.name}")`, [A, C]));
-                            if (eqn) {
-                                st.push(S(15, 'actualInterno.setSiguiente(...getSiguiente().getSiguiente()). El curso se salta y queda desconectado.', [A, C], () => { nx.removed = true; }));
-                                st.push(S(16, 'return; El método termina.', [A, C]));
-                                return st;
-                            }
-                            st.push(S(18, 'actualInterno = actualInterno.getSiguiente().', [A, I(nx, 'actualInterno')]));
-                        }
-                        st.push(S(13, 'actualInterno.getSiguiente() != null → false. Se llegó al final de la sublista.', [A, I(ic[ic.length - 1], 'actualInterno')]));
-                        st.push(S(20, 'Nodo interno no encontrado.', [A], () => println('Nodo interno no encontrado.')));
-                        st.push(S(21, 'return; El método termina.', [A]));
-                        return st;
-                    }
-                    st.push(S(23, 'actualExterno = actualExterno.getSiguiente().', [E(ch[i + 1], 'actualExterno')]));
-                }
-                st.push(S(3, 'actualExterno != null → false. Se recorrió toda la lista.'));
-                st.push(S(25, 'Nodo externo no encontrado.', [], () => println('Nodo externo no encontrado.')));
-                return st;
-            }
-        },
-
-        imprimir: {
+        contarProfesoresDestacados: {
             inputs: [],
             code: [
-                'public void imprimir() {',
-                '    NodoExterno actualExterno = cabeza;',
-                '    while (actualExterno != null) {',
-                '        System.out.print(actualExterno.getDato() + ": ");',
-                '        NodoInterno actualInterno = actualExterno.getListaInterna();',
-                '        while (actualInterno != null) {',
-                '            System.out.print(actualInterno.getDato() + " -> ");',
-                '            actualInterno = actualInterno.getSiguiente();',
-                '        }',
-                '        System.out.println("");',
-                '        actualExterno = actualExterno.getSiguiente();',
-                '    }',
+                'public int contarProfesoresDestacados() {',
+                '    return departamentos.contarProfesoresDestacados();',
                 '}'
             ],
+            summary: 'Cuenta los profesores destacados de TODO el sistema atravesando los tres niveles: cada departamento pregunta a sus profesores, y cada profesor suma las horas de su lista de asignaturas. Es destacado si tiene MÁS de 120 horas.',
+            E: {
+                1: 'Declara el método público: devuelve un entero con el total de profesores destacados del sistema.',
+                2: 'Delega en ListaDepartamentos.contarProfesoresDestacados() → contarProfesoresDestacadosRec: cada Departamento llama a profesores.contarProfesoresDestacados(), y cada Profesor evalúa esDestacado() = getTotalHoras() > 120, donde getTotalHoras() suma las horas de su ListaAsignaturas.'
+            },
+            RS: ['RF-28 · Contar los profesores destacados de todo el sistema.', 'RN-17 · RF-26 · Destacado = total de horas mayor que 120 (con 120 exactas NO lo es).', 'RN-16 · El total de horas de cada profesor es la suma de sus asignaturas.'],
+            R: {
+                2: ['RF-27 · RF-28 · Se cuentan los destacados de cada departamento y se suman.', 'RN-17 · RF-26 · esDestacado(): getTotalHoras() > 120.', 'RN-16 · RF-25 · getTotalHoras() llama a asignaturas.sumarHoras().', 'RN-04 · RN-15 · Atraviesa departamento → profesores → asignaturas.']
+            },
             plan() {
                 const st = [];
-                const ch = extChain();
-                st.push(S(1, 'Se invoca imprimir().'));
-                st.push(S(2, 'actualExterno = cabeza.', [E(ch[0], 'actualExterno')]));
-                for (let i = 0; i < ch.length; i++) {
-                    const e = ch[i];
-                    const A = E(e, 'actualExterno');
-                    const ic = intChain(e);
-                    st.push(S(3, 'actualExterno != null → true.', [A]));
-                    st.push(S(4, `Se imprime "${e.name}: " sin salto de línea.`, [A], () => print(e.name + ': ')));
-                    st.push(S(5, 'actualInterno = actualExterno.getListaInterna().', [A, I(ic[0], 'actualInterno')]));
-                    for (let j = 0; j < ic.length; j++) {
-                        const C = I(ic[j], 'actualInterno');
-                        st.push(S(6, 'actualInterno != null → true.', [A, C]));
-                        st.push(S(7, `Se imprime "${ic[j].name} -> ".`, [A, C], () => print(ic[j].name + ' -> ')));
-                        st.push(S(8, 'actualInterno = actualInterno.getSiguiente().', [A, I(ic[j + 1], 'actualInterno')]));
-                    }
-                    st.push(S(6, 'actualInterno != null → false. Fin de la sublista.', [A]));
-                    st.push(S(10, 'Se imprime un salto de línea.', [A], () => println('')));
-                    st.push(S(11, 'actualExterno = actualExterno.getSiguiente().', [E(ch[i + 1], 'actualExterno')]));
-                }
-                st.push(S(3, 'actualExterno != null → false. Se recorrió toda la multilista.'));
+                st.push(S(1, 'Se invoca contarProfesoresDestacados() del sistema.'));
+                let total = 0;
+                deps.items.forEach(d => {
+                    let sub = 0;
+                    st.push(S(2, 'contarProfesoresDestacadosRec(nodo=' + d.name + '): d.contarProfesoresDestacados() → profesores.contarProfesoresDestacados().', [P(d, 'actual')]));
+                    d.profs.items.forEach(p => {
+                        const h = horasProf(p), dest = h > 120;
+                        if (dest) sub++;
+                        st.push(S(2, p.name + '.esDestacado(): getTotalHoras() = asignaturas.sumarHoras() = ' + h + ' h; ' + h + ' > 120 → ' + dest + '.' + (h === 120 ? ' (Con exactamente 120 horas NO es destacado.)' : ''), [P(d, 'departamento'), P(p, 'actual')]));
+                    });
+                    total += sub;
+                    st.push(S(2, d.name + ' aporta ' + sub + ' destacado(s). Acumulado del sistema: ' + total + '.', [P(d, 'actual')]));
+                });
+                st.push(S(2, 'contarProfesoresDestacadosRec(nodo=null): caso base → 0. Al regresar se suman los aportes de todos los departamentos.', [], () => println('=> retorna: ' + total)));
+                st.push(S(3, 'Fin del método: total = ' + total + '.'));
                 return st;
             }
         }
     };
 
-    // ================== Guía didáctica línea por línea ==================
-    const LINE_GUIDE = {
-        "agregarNodoExterno": {
-                "summary": "Agrega un nodo a la lista externa. Si cabeza es null, el nuevo nodo será el primero; de lo contrario, recorre los nodos externos hasta encontrar el último y enlaza allí el nodo nuevo.",
-                "lines": [
-                        "Declara un método público que no devuelve un valor (void). Recibe en dato la información que almacenará el nuevo nodo externo.",
-                        "Construye un NodoExterno con el contenido recibido. El constructor crea el nodo; su enlace siguiente queda inicialmente en null.",
-                        "Comprueba si cabeza no apunta a ningún nodo. cabeza == null significa que todavía no existe ningún nodo externo.",
-                        "Como la lista está vacía, cabeza pasa a apuntar al nodo recién creado. Así se establece el primer elemento de la lista externa.",
-                        "Inicia la alternativa para el caso contrario: cabeza ya apunta a un nodo y, por tanto, hay que buscar el final de la lista.",
-                        "Declara el cursor actual y lo coloca en el primer nodo externo. No copia el nodo: actual es otra referencia al mismo objeto.",
-                        "Mientras el enlace siguiente de actual no sea null, todavía existe otro nodo externo después del actual y se debe continuar recorriendo.",
-                        "Avanza el cursor actual al siguiente nodo. En cada repetición se aproxima al final de la lista externa.",
-                        "Cierra el bloque while. Se llega aquí cuando actual es el último nodo, es decir, cuando su siguiente vale null.",
-                        "Cambia el enlace siguiente del último nodo para que apunte a nuevoNodo. Con esta asignación el nuevo nodo queda incorporado al final.",
-                        "Cierra el bloque else correspondiente al caso en que la lista ya tenía elementos.",
-                        "Cierra el método. La operación termina sin devolver un valor."
-                ]
-        },
-        "agregarNodoInterno": {
-                "summary": "Busca primero el nodo externo identificado por datoExterno. Cuando lo encuentra, agrega datoInterno al final de la sublista asociada a ese nodo; si la sublista está vacía, el nuevo nodo será su primer elemento.",
-                "lines": [
-                        "Declara un método público sin valor de retorno. Recibe el dato del nodo externo que contiene la sublista y el dato que se desea agregar dentro de ella.",
-                        "Inicializa actual en cabeza para comenzar la búsqueda desde el primer nodo de la lista externa.",
-                        "Recorre la lista externa mientras actual no sea null. La condición evita intentar leer un nodo cuando ya se llegó al final.",
-                        "Compara el dato almacenado en el nodo externo actual con datoExterno. equals compara el contenido de las cadenas, no sus referencias.",
-                        "Crea el NodoInterno que almacenará datoInterno. Todavía falta enlazarlo a la sublista del nodo externo encontrado.",
-                        "Comprueba si el nodo externo no tiene primer nodo interno: getListaInterna() devuelve null cuando la sublista está vacía.",
-                        "Asigna el nodo nuevo como inicio de la sublista interna. Se ejecuta cuando ese nodo externo todavía no tenía elementos internos.",
-                        "Abre la alternativa: la sublista sí contiene al menos un nodo y el nuevo elemento debe añadirse al final.",
-                        "Inicializa temp con el primer nodo interno. Este cursor se usará para recorrer únicamente la sublista del nodo externo encontrado.",
-                        "Mientras temp tenga un siguiente nodo, aún no se ha alcanzado el último nodo interno.",
-                        "Avanza temp al nodo interno siguiente para continuar la búsqueda del final de la sublista.",
-                        "Cierra el while interno. Al salir, temp referencia el último nodo de la sublista.",
-                        "Enlaza el último nodo interno con nuevoNodo. Así se incorpora el nuevo elemento sin modificar la lista externa.",
-                        "Cierra el bloque else de la sublista que ya tenía elementos.",
-                        "Termina el método inmediatamente. El nodo externo fue encontrado y el nodo interno ya quedó agregado.",
-                        "Cierra el if que comprobó si el dato externo coincidía.",
-                        "Si el nodo actual no coincidió, avanza actual al siguiente nodo externo para seguir buscando.",
-                        "Cierra el recorrido externo. Se alcanza si ya no quedan nodos por revisar.",
-                        "Informa que no se encontró el nodo externo solicitado. En este caso no se agregó ningún nodo interno.",
-                        "Cierra el método."
-                ]
-        },
-        "obtenerListaInterna": {
-                "summary": "Localiza un nodo externo por su dato y devuelve la referencia al primer nodo de su sublista interna. Si el nodo externo no existe, informa el problema y devuelve null.",
-                "lines": [
-                        "Declara un método público cuyo resultado es una referencia NodoInterno. El parámetro identifica qué nodo externo contiene la sublista que se desea obtener.",
-                        "Coloca el cursor actual en cabeza para iniciar la búsqueda por la lista externa.",
-                        "Repite el recorrido mientras actual apunte a un nodo externo válido.",
-                        "Comprueba si el dato del nodo externo actual coincide con datoExterno.",
-                        "Devuelve la referencia al primer nodo de la lista interna del nodo externo encontrado. Si ese nodo externo no tiene elementos internos, la referencia devuelta será null.",
-                        "Cierra el bloque if. Si hubo coincidencia, el return ya terminó el método; si no, se continúa el recorrido.",
-                        "Avanza actual al siguiente nodo externo para revisar el próximo elemento.",
-                        "Cierra el while. Se llega aquí cuando se recorrió toda la lista externa sin encontrar el dato.",
-                        "Muestra un mensaje indicando que no existe el nodo externo solicitado.",
-                        "Devuelve null para señalar que no se obtuvo una sublista porque el nodo externo no fue encontrado.",
-                        "Cierra el método."
-                ]
-        },
-        "actualizarNodoExterno": {
-                "summary": "Busca un nodo en la lista externa cuyo dato coincida con datoViejo. Cuando lo encuentra, reemplaza ese contenido por datoNuevo y finaliza.",
-                "lines": [
-                        "Declara un método público sin retorno. Recibe el contenido que se buscará y el nuevo contenido que lo sustituirá.",
-                        "Inicia el cursor actual en cabeza, el primer nodo de la lista externa.",
-                        "Recorre los nodos externos mientras actual no sea null.",
-                        "Compara el dato del nodo actual con datoViejo para determinar si se encontró el elemento que debe actualizarse.",
-                        "Cambia el campo dato del nodo actual por datoNuevo. Se modifica el contenido del nodo, no su enlace siguiente ni su posición.",
-                        "Finaliza el método en cuanto encuentra y actualiza el nodo. Evita seguir buscando coincidencias posteriores.",
-                        "Cierra el bloque de la condición de coincidencia.",
-                        "Si no hubo coincidencia, avanza actual al siguiente nodo externo.",
-                        "Cierra el while. Si se alcanza, significa que actual llegó a null y no hubo coincidencia.",
-                        "Informa que el nodo externo indicado por datoViejo no fue encontrado.",
-                        "Cierra el método."
-                ]
-        },
-        "actualizarNodoInterno": {
-                "summary": "Realiza una búsqueda en dos niveles: primero localiza el nodo externo y luego recorre su sublista interna. Al encontrar datoViejo dentro de esa sublista, reemplaza su contenido por datoNuevo.",
-                "lines": [
-                        "Declara un método público sin retorno. Recibe el dato del nodo externo que contiene la sublista, el dato interno que se buscará y el nuevo dato interno.",
-                        "Inicializa actualExterno en cabeza para comenzar por el primer nodo de la lista externa.",
-                        "Recorre la lista externa mientras actualExterno apunte a un nodo válido.",
-                        "Comprueba si el nodo externo actual es el que identifica datoExterno.",
-                        "Obtiene el inicio de la sublista del nodo externo encontrado y lo asigna a actualInterno. Si no hay sublista, el cursor será null.",
-                        "Recorre los nodos internos mientras actualInterno no sea null.",
-                        "Compara el dato del nodo interno actual con datoViejo.",
-                        "Reemplaza el dato del nodo interno encontrado por datoNuevo. Los enlaces de la multilista permanecen iguales.",
-                        "Termina el método después de realizar la actualización.",
-                        "Cierra la condición que comprobó si el dato interno coincidía.",
-                        "Si no hubo coincidencia, avanza actualInterno al siguiente nodo de la sublista.",
-                        "Cierra el while interno. Se alcanza cuando la sublista terminó sin encontrar datoViejo.",
-                        "Muestra un mensaje indicando que el dato interno solicitado no existe dentro de la sublista seleccionada.",
-                        "Termina el método. No tiene sentido seguir buscando en otros nodos externos, porque ya se encontró el externo solicitado.",
-                        "Cierra el if que identificó el nodo externo.",
-                        "Si el dato externo no coincidió, avanza actualExterno al siguiente nodo externo.",
-                        "Cierra el recorrido externo. Se alcanza cuando se revisaron todos los nodos externos.",
-                        "Informa que no se encontró el nodo externo que debía contener la sublista.",
-                        "Cierra el método."
-                ]
-        },
-        "eliminarNodoExterno": {
-                "summary": "Elimina un nodo de la lista externa. Trata por separado la lista vacía y la eliminación de cabeza; para cualquier otra posición utiliza un cursor que revisa el nodo siguiente y reajusta enlaces para saltarse el nodo encontrado.",
-                "lines": [
-                        "Declara un método público sin retorno que recibe el dato del nodo externo que se desea eliminar.",
-                        "Comprueba si cabeza es null. Esta validación evita intentar acceder a un nodo cuando la multilista está vacía.",
-                        "Muestra un mensaje para indicar que no hay elementos externos que puedan eliminarse.",
-                        "Termina el método porque no existe ningún nodo que procesar.",
-                        "Cierra el bloque que maneja el caso de lista vacía.",
-                        "Comprueba aparte si el dato del primer nodo coincide con el dato solicitado. La cabeza requiere un tratamiento especial porque no tiene un nodo anterior.",
-                        "Mueve cabeza al nodo siguiente. El primer nodo queda fuera de la cadena enlazada y el segundo pasa a ser la nueva cabeza.",
-                        "Termina el método después de eliminar la antigua cabeza.",
-                        "Cierra el bloque que elimina el primer nodo.",
-                        "Inicializa actual en cabeza. Como el primer nodo no era el buscado, se comenzará a revisar desde él.",
-                        "Recorre mientras exista un nodo después de actual. Se mira hacia adelante porque se necesita modificar el enlace del nodo anterior al que será eliminado.",
-                        "Compara el dato del nodo siguiente con el dato buscado. Así se identifica el objetivo sin perder la referencia a su anterior.",
-                        "Hace que actual apunte al nodo que está después del objetivo. El enlace salta por encima del nodo que se elimina de la cadena.",
-                        "Termina el método una vez reajustado el enlace.",
-                        "Cierra el if que comprobó el nodo siguiente.",
-                        "Si no era el nodo buscado, avanza actual una posición en la lista externa.",
-                        "Cierra el while. Si se alcanza, se llegó al último nodo sin encontrar el dato.",
-                        "Muestra un mensaje indicando que el nodo externo solicitado no existe.",
-                        "Cierra el método."
-                ]
-        },
-        "eliminarNodoInterno": {
-                "summary": "Busca el nodo externo que contiene la sublista y elimina de ella el nodo interno solicitado. Comprueba primero si la sublista está vacía y trata de forma especial la eliminación de su primer nodo; para los demás, reajusta el enlace del nodo anterior.",
-                "lines": [
-                        "Declara un método público sin retorno. Recibe el dato del nodo externo propietario de la sublista y el dato del nodo interno que se eliminará.",
-                        "Coloca actualExterno en cabeza para iniciar la búsqueda en la lista externa.",
-                        "Recorre la lista externa mientras actualExterno no sea null.",
-                        "Comprueba si el dato del nodo externo actual coincide con datoExterno.",
-                        "Verifica si la sublista interna de ese nodo externo está vacía, es decir, si su referencia inicial es null.",
-                        "Muestra un mensaje indicando que no hay nodos internos que eliminar en esa sublista.",
-                        "Termina el método porque la sublista seleccionada está vacía.",
-                        "Cierra la comprobación de sublista vacía.",
-                        "Comprueba si el primer nodo interno contiene el dato que se desea eliminar. Se trata aparte porque no existe un nodo interno anterior a él.",
-                        "Actualiza la referencia inicial de la sublista para que apunte al segundo nodo interno. De este modo, el primero queda desconectado.",
-                        "Termina el método después de eliminar el primer nodo interno.",
-                        "Cierra el bloque que elimina el primer nodo interno.",
-                        "Inicializa actualInterno en el primer nodo de la sublista. Se utiliza para buscar los nodos internos restantes.",
-                        "Recorre mientras exista un nodo después de actualInterno. El cursor se mantiene en el anterior al posible objetivo para poder cambiar su enlace.",
-                        "Compara el dato del nodo siguiente con datoInterno.",
-                        "Reasigna el enlace siguiente del nodo actual para que apunte al nodo que viene después del objetivo. El enlace evita el nodo que se elimina.",
-                        "Termina el método después de reajustar el enlace interno.",
-                        "Cierra la condición que comprobó el siguiente nodo interno.",
-                        "Si el nodo siguiente no era el buscado, avanza actualInterno al siguiente nodo.",
-                        "Cierra el while interno. Se alcanza cuando se revisó toda la sublista sin encontrar el dato solicitado.",
-                        "Muestra un mensaje indicando que el nodo interno no se encontró dentro de la sublista seleccionada.",
-                        "Termina el método: el nodo externo sí existía, pero el dato interno no.",
-                        "Cierra el bloque que se ejecuta cuando se encuentra el nodo externo.",
-                        "Si el nodo externo actual no coincide, avanza actualExterno al siguiente nodo externo.",
-                        "Cierra el recorrido externo. Se llega aquí cuando todos los nodos externos fueron revisados.",
-                        "Muestra un mensaje indicando que el nodo externo solicitado no existe.",
-                        "Cierra el método."
-                ]
-        },
-        "imprimir": {
-                "summary": "Recorre la multilista en dos niveles. Por cada nodo externo imprime su dato, recorre e imprime todos los nodos de su sublista interna y luego pasa al siguiente nodo externo.",
-                "lines": [
-                        "Declara un método público sin retorno. Su objetivo es mostrar en consola el contenido de la multilista.",
-                        "Inicializa actualExterno en cabeza para comenzar desde el primer nodo externo.",
-                        "Recorre la lista externa mientras actualExterno apunte a un nodo válido.",
-                        "Imprime el dato del nodo externo actual seguido de dos puntos y un espacio. print no hace salto de línea, por lo que los nodos internos aparecerán en la misma línea.",
-                        "Obtiene la referencia al primer nodo interno del nodo externo actual. Cada nodo externo puede tener su propia sublista.",
-                        "Recorre la sublista interna mientras actualInterno no sea null.",
-                        "Imprime el dato del nodo interno actual y una flecha para separar visualmente los elementos de la sublista.",
-                        "Avanza actualInterno al siguiente nodo interno.",
-                        "Cierra el while interno. Se alcanza cuando ya se imprimieron todos los nodos internos de ese nodo externo.",
-                        "Imprime una cadena vacía con println para pasar a la línea siguiente antes de procesar el próximo nodo externo.",
-                        "Avanza actualExterno al siguiente nodo externo para repetir el proceso con su propia sublista.",
-                        "Cierra el while externo. Se alcanza después de procesar todos los nodos externos.",
-                        "Cierra el método."
-                ]
-        }
-};
+    // ================== Explicaciones por defecto (líneas sin texto propio) ==================
+    function defaultExplanation(raw) {
+        const t = raw.trim();
+        if (t === '') return 'Línea en blanco: separa bloques de instrucciones.';
+        if (t === '}') return 'Cierra el bloque (el método). Si el método no devolvió ni lanzó antes una excepción, aquí termina.';
+        if (t === ') {') return 'Cierra la lista de parámetros y abre el cuerpo del método.';
+        if (t === ');') return 'Cierra la llamada que se escribió en varias líneas.';
+        if (/^(String|int) \w+,?$/.test(t)) return 'Parámetro del método. Su valor llega desde quien invoca el método.';
+        if (/^\w+,?$/.test(t)) return 'Argumento de la llamada: se pasa el valor de este parámetro.';
+        return 'Continuación de la instrucción anterior, escrita en varias líneas.';
+    }
 
     // ================== Elementos DOM ==================
     const codeBody = document.getElementById('code-display');
@@ -1236,18 +1408,31 @@
     const guideCounter = document.getElementById('guide-counter');
     const guideCode = document.getElementById('guide-code');
     const guideText = document.getElementById('guide-text');
+    const guideRules = document.getElementById('guide-rules');
 
-    // ================== Estado de la simulación ==================
-    let simulating = false;
-    let steps = [];
-    let stepIdx = -1;
-    let curPtrs = [];
+    let simulating = false, steps = [], stepIdx = -1, curPtrs = [];
 
-    // ================== Código con resaltado ==================
+    function renderRules(list) {
+        guideRules.innerHTML = '';
+        (list || []).forEach(text => {
+            const row = document.createElement('div');
+            row.className = 'guide-rule';
+            const m = text.match(/^((?:[A-Z]+-\d+(?: a [A-Z]+-\d+)? · )+)(.*)$/);
+            if (m) {
+                const ids = document.createElement('b');
+                ids.textContent = m[1];
+                row.append(ids, document.createTextNode(m[2]));
+            } else {
+                row.textContent = text;
+            }
+            guideRules.appendChild(row);
+        });
+    }
+
     function highlightJava(text) {
         const esc = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         return esc.replace(
-            /("[^"]*")|\b(public|void|while|if|else|return|new|null)\b|\b(NodoExterno|NodoInterno|String|System)\b|\b([A-Za-z_]\w*)(?=\()/g,
+            /("[^"]*")|\b(public|private|void|return|new|null|int|if|else)\b|\b(String|[A-Z]\w*)\b|\b([A-Za-z_]\w*)(?=\()/g,
             (m, str, kw, type, meth) => {
                 if (str) return `<span class="string">${str}</span>`;
                 if (kw) return `<span class="keyword">${kw}</span>`;
@@ -1267,17 +1452,10 @@
             line.setAttribute('role', 'button');
             line.setAttribute('tabindex', '0');
             line.setAttribute('aria-label', 'Explicar línea ' + (i + 1));
-            line.addEventListener('click', () => {
-                if (simulating) return;
-                showLineGuide(name, i + 1);
-                hl(i + 1);
-            });
+            const go = () => { if (simulating) return; showLineGuide(name, i + 1); hl(i + 1); };
+            line.addEventListener('click', go);
             line.addEventListener('keydown', event => {
-                if ((event.key === 'Enter' || event.key === ' ') && !simulating) {
-                    event.preventDefault();
-                    showLineGuide(name, i + 1);
-                    hl(i + 1);
-                }
+                if ((event.key === 'Enter' || event.key === ' ') && !simulating) { event.preventDefault(); go(); }
             });
             const ln = document.createElement('span');
             ln.className = 'ln';
@@ -1285,7 +1463,7 @@
             const code = document.createElement('span');
             code.className = 'code';
             code.style.paddingLeft = (lead * 0.75) + 'ch';
-            code.innerHTML = highlightJava(raw.slice(lead));
+            code.innerHTML = highlightJava(raw.slice(lead)) || '&nbsp;';
             line.appendChild(ln);
             line.appendChild(code);
             codeBody.appendChild(line);
@@ -1297,62 +1475,64 @@
     }
 
     function showLineGuide(name, lineNumber = 0) {
-        const guide = LINE_GUIDE[name];
         const method = METHODS[name];
-        if (!guide || !method) return;
+        if (!method) return;
         if (lineNumber < 1 || lineNumber > method.code.length) {
             guideTitle.textContent = 'Propósito de ' + name;
             guideCounter.textContent = method.code.length + ' líneas';
             guideCode.hidden = true;
             guideCode.textContent = '';
-            guideText.textContent = guide.summary;
+            guideText.textContent = method.summary;
+            renderRules(method.RS);
             return;
         }
+        const raw = method.code[lineNumber - 1];
         guideTitle.textContent = 'Línea ' + lineNumber + ' · ' + name;
         guideCounter.textContent = 'Línea ' + lineNumber + ' de ' + method.code.length;
         guideCode.hidden = false;
-        guideCode.textContent = method.code[lineNumber - 1].trim();
-        guideText.textContent = guide.lines[lineNumber - 1];
+        guideCode.textContent = raw.trim() || '(línea en blanco)';
+        guideText.textContent = method.E[lineNumber] || defaultExplanation(raw);
+        renderRules(method.R[lineNumber]);
     }
 
     function hl(num) {
         clearHighlights();
         const el = document.getElementById('l-' + num);
-        if (el) {
-            el.classList.add('active');
-            el.scrollIntoView({ block: 'nearest' });
-        }
+        if (el) { el.classList.add('active'); el.scrollIntoView({ block: 'nearest' }); }
     }
 
-    // ================== Interfaz de método ==================
     function changeMethod() {
         const name = methodSelect.value;
+        const m = METHODS[name];
         methodTitle.textContent = name;
         renderCode(name);
         showLineGuide(name, 0);
         clearHighlights();
         inputsContainer.innerHTML = '';
-        METHODS[name].inputs.forEach((label, i) => {
+        m.inputs.forEach((f, i) => {
             const wrap = document.createElement('label');
             wrap.className = 'field';
-            wrap.textContent = label;
+            wrap.textContent = f.label;
             const inp = document.createElement('input');
             inp.type = 'text';
-            inp.maxLength = 12;
+            inp.maxLength = 24;
             inp.id = 'inp-' + i;
-            inp.placeholder = label;
+            inp.placeholder = f.label;
+            if (f.def !== undefined) inp.value = f.def;
+            if (f.num) inp.inputMode = 'numeric';
             inp.addEventListener('keydown', e => { if (e.key === 'Enter') startSim(); });
             wrap.appendChild(inp);
             inputsContainer.appendChild(wrap);
         });
-        if (!METHODS[name].inputs.length) {
+        if (!m.inputs.length || m.note) {
             const note = document.createElement('span');
             note.style.cssText = 'color:#7f8c8d;font-size:0.85rem;';
-            note.textContent = 'Este método no necesita parámetros.';
+            note.textContent = m.note || 'Este método no necesita parámetros.';
             inputsContainer.appendChild(note);
         }
         if (!simulating) {
-            statusMsg.textContent = 'Método seleccionado: ' + name + '. La multilista conserva su estado actual.';
+            statusMsg.style.color = '';
+            statusMsg.textContent = 'Método seleccionado: ' + name + '. El sistema conserva su estado actual. Puedes dejar un campo vacío para ver la excepción.';
         }
         curPtrs = [];
         render();
@@ -1368,101 +1548,118 @@
     }
 
     // ================== Renderizado visual ==================
-    function chip(label) {
-        const cls = {
-            cabeza: 'c-cabeza', actual: 'c-actual', actualExterno: 'c-actual', actualInterno: 'c-actual',
-            anterior: 'c-prev', temp: 'c-temp', nuevoNodo: 'c-new'
-        }[label] || 'c-actual';
-        const c = document.createElement('span');
-        c.className = 'chip ' + cls;
-        return c;
+    const CHIP = { cabeza: 'c-cabeza', actual: 'c-actual', departamento: 'c-prev', profesor: 'c-temp', asignatura: 'c-prev', nuevoNodo: 'c-new' };
+    function chipsFor(id, isFirst) {
+        const frag = document.createDocumentFragment();
+        const add = (label, cls) => {
+            const c = document.createElement('span');
+            c.className = 'chip ' + cls;
+            c.textContent = label;
+            frag.appendChild(c);
+        };
+        if (isFirst) add('cabeza', 'c-cabeza');
+        curPtrs.filter(p => p.id === id).forEach(p => add(p.label, CHIP[p.label] || 'c-actual'));
+        return frag;
     }
 
-    function buildNode(kind, node) {
+    function node(kind, n, meta, extraClass) {
         const div = document.createElement('div');
-        div.className = 'node node-' + kind;
-        if (node.linked === false) div.classList.add('pending');
-        if (node.removed) div.classList.add('removed');
+        div.className = 'node node-' + kind + (extraClass ? ' ' + extraClass : '');
+        if (n.state === 'pending') div.classList.add('pending');
+        if (n.state === 'removed') div.classList.add('removed');
         const d = document.createElement('div');
         d.className = 'node-data';
-        d.textContent = node.name;
+        const nm = document.createElement('div');
+        nm.className = 'nd-name';
+        nm.textContent = n.name;
+        const mt = document.createElement('div');
+        mt.className = 'nd-meta';
+        mt.textContent = meta;
+        d.append(nm, mt);
         const p = document.createElement('div');
         p.className = 'node-pointer';
         p.innerHTML = '<div class="dot"></div>';
-        div.appendChild(d);
-        div.appendChild(p);
+        div.append(d, p);
         return div;
+    }
+
+    function buildAsigs(p, parentRemoved) {
+        const wrap = document.createElement('div');
+        wrap.className = 'ml-asigs';
+        const all = [...p.asigs.items.map(a => [a, true]), ...p.asigs.det.map(a => [a, false])];
+        all.forEach(([a, linked], idx) => {
+            const av = document.createElement('div');
+            av.className = 'arrow-vertical' + (linked ? '' : ' ghost');
+            if (linked || idx === 0) wrap.appendChild(av);
+            const row = document.createElement('div');
+            row.className = 'ml-arow' + (linked ? '' : ' detached');
+            row.appendChild(node('asig', a, a.horas + ' h', 'small'));
+            const t = document.createElement('div');
+            t.className = 'ml-atags';
+            t.appendChild(chipsFor(a.id, linked && idx === 0));
+            row.appendChild(t);
+            wrap.appendChild(row);
+        });
+        return wrap;
     }
 
     function render() {
         visualContainer.innerHTML = '';
-        const chain = extChain();
-        const detached = data.filter(n => !isLinked(n));
-        const ordered = [...chain, ...detached];
-        const headId = chain.length ? chain[0].id : null;
-
-        if (chain.length === 0) {
+        const root = document.createElement('div');
+        root.className = 'ml-root';
+        const all = [...deps.items.map(d => [d, true]), ...deps.det.map(d => [d, false])];
+        if (!all.length) {
             const m = document.createElement('div');
             m.className = 'empty-msg';
-            m.textContent = 'cabeza = null (Multilista vacía)';
-            visualContainer.appendChild(m);
+            m.textContent = 'cabeza = null (ListaDepartamentos vacía)';
+            root.appendChild(m);
         }
+        all.forEach(([d, linked], di) => {
+            const block = document.createElement('div');
+            block.className = 'ml-dept' + (linked ? '' : ' detached');
 
-        ordered.forEach((e, idx) => {
-            const linked = isLinked(e);
-            const col = document.createElement('div');
-            col.className = 'ext-col' + (linked ? '' : ' detached');
-
-            // punteros del nodo externo (zona reservada, sin superposición)
+            const dcol = document.createElement('div');
+            dcol.className = 'ml-dcol';
             const tags = document.createElement('div');
-            tags.className = 'tag-row';
-            if (e.id === headId) {
-                const c = chip('cabeza'); c.textContent = '↓ cabeza'; tags.appendChild(c);
-            }
-            curPtrs.filter(p => p.kind === 'ext' && p.id === e.id).forEach(p => {
-                const c = chip(p.label); c.textContent = '↓ ' + p.label; tags.appendChild(c);
-            });
-            col.appendChild(tags);
-
-            const holder = document.createElement('div');
-            holder.className = 'ext-holder';
-            holder.appendChild(buildNode('ext', e));
-            if (linked && idx < chain.length - 1) {
+            tags.className = 'ml-tags';
+            tags.appendChild(chipsFor(d.id, linked && di === 0));
+            dcol.appendChild(tags);
+            dcol.appendChild(node('ext', d, d.profs.items.length + ' profesor(es)'));
+            const hasNext = linked && di < deps.items.length - 1;
+            const vline = document.createElement('div');
+            vline.className = 'ml-vline' + (hasNext ? ' has-next' : '');
+            dcol.appendChild(vline);
+            if (d.profs.items.length || d.profs.det.length) {
                 const ah = document.createElement('div');
-                ah.className = 'arrow-horizontal';
-                holder.appendChild(ah);
+                ah.className = 'ml-harrow-first';
+                dcol.appendChild(ah);
             }
-            col.appendChild(holder);
+            block.appendChild(dcol);
 
-            // sublista
-            const list = document.createElement('div');
-            list.className = 'int-list';
-            const linkedInts = e.courses.filter(isLinked);
-            const detInts = e.courses.filter(c => !isLinked(c));
-
-            const addRow = (c, withArrow) => {
-                if (withArrow) {
-                    const av = document.createElement('div');
-                    av.className = 'arrow-vertical';
-                    list.appendChild(av);
+            const chain = document.createElement('div');
+            chain.className = 'ml-chain';
+            const profs = [...d.profs.items.map(p => [p, true]), ...d.profs.det.map(p => [p, false])];
+            profs.forEach(([p, pl], pi) => {
+                const col = document.createElement('div');
+                col.className = 'ml-pcol' + (pl ? '' : ' detached');
+                const ptags = document.createElement('div');
+                ptags.className = 'ml-tags';
+                ptags.appendChild(chipsFor(p.id, pl && pi === 0));
+                col.appendChild(ptags);
+                const h = horasProf(p);
+                col.appendChild(node('int', p, h + ' h' + (h > 120 ? ' · destacado' : '')));
+                if (pl && pi < d.profs.items.length - 1) {
+                    const ah = document.createElement('div');
+                    ah.className = 'ml-harrow';
+                    col.appendChild(ah);
                 }
-                const row = document.createElement('div');
-                row.className = 'int-row' + (withArrow ? '' : ' detached-row');
-                row.appendChild(buildNode('int', c));
-                const t = document.createElement('div');
-                t.className = 'int-tags';
-                curPtrs.filter(p => p.kind === 'int' && p.id === c.id).forEach(p => {
-                    const ch = chip(p.label); ch.textContent = '← ' + p.label; t.appendChild(ch);
-                });
-                row.appendChild(t);
-                list.appendChild(row);
-            };
-            linkedInts.forEach(c => addRow(c, true));
-            detInts.forEach(c => addRow(c, false));
-            col.appendChild(list);
-
-            visualContainer.appendChild(col);
+                col.appendChild(buildAsigs(p));
+                chain.appendChild(col);
+            });
+            block.appendChild(chain);
+            root.appendChild(block);
         });
+        visualContainer.appendChild(root);
     }
 
     // ================== Simulación ==================
@@ -1470,13 +1667,21 @@
         if (simulating) return;
         const name = methodSelect.value;
         const m = METHODS[name];
-        const args = m.inputs.map((_, i) => document.getElementById('inp-' + i).value.trim());
-        if (args.some(a => a === '')) {
-            statusMsg.textContent = 'Completa todos los parámetros antes de iniciar.';
-            const empty = inputsContainer.querySelector('input[value=""]') ||
-                [...inputsContainer.querySelectorAll('input')].find(i => !i.value.trim());
-            if (empty) empty.focus();
-            return;
+        const args = [];
+        for (let i = 0; i < m.inputs.length; i++) {
+            const f = m.inputs[i];
+            const inp = document.getElementById('inp-' + i);
+            if (f.num) {
+                if (!/^\s*-?\d+\s*$/.test(inp.value)) {
+                    statusMsg.style.color = '';
+                    statusMsg.textContent = 'El campo «' + f.label + '» debe ser un número entero (en Java es un int).';
+                    inp.focus();
+                    return;
+                }
+                args.push(inp.value.trim());
+            } else {
+                args.push(inp.value);
+            }
         }
         steps = m.plan(args);
         stepIdx = -1;
@@ -1489,35 +1694,30 @@
     function nextStep() {
         if (!simulating) return;
         stepIdx++;
-        if (stepIdx >= steps.length) {
-            finish();
-            return;
-        }
+        if (stepIdx >= steps.length) { finish(); return; }
         const s = steps[stepIdx];
         if (s.apply) s.apply();
         curPtrs = s.ptrs;
         hl(s.line);
+        statusMsg.style.color = s.err ? '#c0392b' : '';
         statusMsg.textContent = s.msg;
         showLineGuide(methodSelect.value, s.line);
         render();
         if (stepIdx === steps.length - 1) btnNext.textContent = 'Finalizar';
     }
 
-    function runAll() {
-        while (simulating) nextStep();
-    }
+    function runAll() { while (simulating) nextStep(); }
 
     function finish() {
-        // Descartar nodos desconectados o sin enlazar
-        data = data.filter(isLinked);
-        data.forEach(e => { e.courses = e.courses.filter(isLinked); });
+        purge(deps);
         simulating = false;
         steps = [];
         stepIdx = -1;
         curPtrs = [];
         clearHighlights();
         setBusy(false);
-        statusMsg.textContent = 'Método finalizado. La multilista conserva los cambios; puedes ejecutar otro método.';
+        statusMsg.style.color = '';
+        statusMsg.textContent = 'Método finalizado. El sistema conserva los cambios; puedes ejecutar otro método.';
         render();
     }
 
@@ -1532,17 +1732,21 @@
 
     function resetLab() {
         abortSim();
-        data = sampleData();
-        statusMsg.textContent = 'Multilista reiniciada con el ejemplo: Juan, María y Pedro.';
+        deps = sampleData();
+        contadorOperaciones = 0;
+        statusMsg.style.color = '';
+        statusMsg.textContent = 'Sistema reiniciado con el ejemplo: Ciencias, Ingenieria y Humanidades.';
         render();
     }
 
     function emptyList() {
         abortSim();
-        data = [];
-        statusMsg.textContent = 'Multilista vacía (cabeza = null). Empieza con agregarNodoExterno.';
+        deps = mkList();
+        statusMsg.style.color = '';
+        statusMsg.textContent = 'ListaDepartamentos vacía (cabeza = null). Empieza con crearDepartamento.';
         render();
     }
+
 
         // ================== Zoom independiente y pantalla completa ==================
     const ZOOM_MIN = 0.6, ZOOM_MAX = 2.0, ZOOM_STEP = 0.1;
